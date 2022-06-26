@@ -1,4 +1,4 @@
-pub fn next_permutation(nums: &mut [i32]) -> bool {
+pub fn next_permutation<T: PartialOrd>(nums: &mut [T]) -> bool {
     let last_asc = match nums.windows(2).rposition(|w| w[0] < w[1]) {
         None => {
             nums.reverse();
@@ -8,7 +8,7 @@ pub fn next_permutation(nums: &mut [i32]) -> bool {
     };
     match nums[last_asc + 1..]
         .iter()
-        .rposition(|&x| x > nums[last_asc])
+        .rposition(|x| x > &nums[last_asc])
     {
         None => return false,
         Some(i) => {
