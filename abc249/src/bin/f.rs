@@ -14,27 +14,26 @@ fn main() {
     let mut max_add = 0;
     let mut res = 0;
     for (t, y) in ty.iter().rev() {
-        println!("{} {}", t, y);
-        if t == 1 {
+        if *t == 1 {
             skip_one += 1;
             if skip_one > k {
                 continue;
             } else {
             }
         } else {
-            if y >= 0 {
+            if *y >= 0 {
                 max_add += y;
             } else {
                 neg_cost.push(y);
                 if neg_cost.len() > k {
                     let neg = neg_cost.pop().unwrap();
-                    max_add -= neg;
+                    max_add += neg;
                 }
             }
         }
     }
     if skip_one <= k {
-        res = cmp::max(res, t + max_add);
+        res = cmp::max(res, max_add);
     }
     println!("{}", res);
 }
