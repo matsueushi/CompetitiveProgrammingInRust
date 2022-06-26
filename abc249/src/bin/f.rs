@@ -10,29 +10,30 @@ fn main() {
         ty: [(usize, i64); n],
     }
     let mut neg_cost = BinaryHeap::new();
-    let mut skip_one = 0;
     let mut max_add = 0;
-    let mut res = 0;
+    let mut res = std::i64::MIN;
+    let mut drop_one = 0;
     for (t, y) in ty.iter().rev() {
         if *t == 1 {
-            skip_one += 1;
-            if skip_one > k {
-                continue;
+            if drop_one > k {
+                break;
             } else {
+                drop_one += 1;
+                res = cmp::max(res, y + max_add);
             }
         } else {
             if *y >= 0 {
                 max_add += y;
             } else {
                 neg_cost.push(y);
-                if neg_cost.len() > k {
+                while !(neg_cost.is_empty()) && neg_cost.len() + drop_one > k {
                     let neg = neg_cost.pop().unwrap();
                     max_add += neg;
                 }
             }
         }
     }
-    if skip_one <= k {
+    if drop_one <= k {
         res = cmp::max(res, max_add);
     }
     println!("{}", res);
