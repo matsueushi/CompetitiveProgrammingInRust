@@ -26,11 +26,11 @@ fn main() {
                 max_add += y;
             } else {
                 neg_cost.push(y);
-                while !(neg_cost.is_empty()) && neg_cost.len() + drop_one > k {
-                    let neg = neg_cost.pop().unwrap();
-                    max_add += neg;
-                }
             }
+        }
+        while !(neg_cost.is_empty()) && neg_cost.len() + drop_one > k {
+            let neg = neg_cost.pop().unwrap();
+            max_add += neg;
         }
     }
     if drop_one <= k {
