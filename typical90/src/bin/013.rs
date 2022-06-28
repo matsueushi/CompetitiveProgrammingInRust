@@ -1,3 +1,4 @@
+use proconio::input;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
@@ -22,12 +23,13 @@ impl PartialOrd for State {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Edge {
     node: usize,
     cost: usize,
 }
 
-pub fn dijkstra(adj_list: &Vec<Vec<Edge>>, start: usize) -> Vec<Option<usize>> {
+pub fn dijkstra(adj_list: &Vec<Vec<Edge>>, start: usize) -> Vec<usize> {
     let mut dist: Vec<_> = (0..adj_list.len()).map(|_| std::usize::MAX).collect();
     let mut heap = BinaryHeap::new();
 
@@ -55,37 +57,30 @@ pub fn dijkstra(adj_list: &Vec<Vec<Edge>>, start: usize) -> Vec<Option<usize>> {
         }
     }
 
-    dist.into_iter()
-        .map(|x| if x == std::usize::MAX { None } else { Some(x) })
-        .collect::<Vec<_>>()
+    dist
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn main() {
+    input! {
+        n: usize,
+        m: usize,
+        abc: [(usize, usize, usize); m],
+    }
+    let mut graph = vec![vec![]; n];
+    for (a, b, c) in abc {
+        graph[a - 1].push(Edge {
+            node: b - 1,
+            cost: c,
+        });
+        graph[b - 1].push(Edge {
+            node: a - 1,
+            cost: c,
+        });
+    }
 
-    #[test]
-    fn test_dijkstra() {
-        let graph = vec![
-            // Node 0
-            vec![Edge { node: 2, cost: 10 }, Edge { node: 1, cost: 1 }],
-            // Node 1
-            vec![Edge { node: 3, cost: 2 }],
-            // Node 2
-            vec![
-                Edge { node: 1, cost: 1 },
-                Edge { node: 3, cost: 3 },
-                Edge { node: 4, cost: 1 },
-            ],
-            // Node 3
-            vec![Edge { node: 0, cost: 7 }, Edge { node: 4, cost: 2 }],
-            // Node 4
-            vec![],
-        ];
-
-        let res = dijkstra(&graph, 0);
-        assert_eq!(res, vec![Some(0), Some(1), Some(10), Some(3), Some(5)]);
-        let res = dijkstra(&graph, 4);
-        assert_eq!(res, vec![None, None, None, None, Some(0)]);
+    let dist0 = dijkstra(&graph, 0);
+    let dist1 = dijkstra(&graph, n - 1);
+    for i in 0..n {
+        println!("{}", dist0[i] + dist1[i]);
     }
 }
