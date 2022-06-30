@@ -1,5 +1,5 @@
 use fenwick::Fenwick;
-use proconio::input;
+use proconio::{fastout, input};
 
 pub mod fenwick {
 
@@ -45,6 +45,7 @@ pub mod fenwick {
     }
 }
 
+#[fastout]
 fn main() {
     input! {
         n: usize,
@@ -57,6 +58,7 @@ fn main() {
         fw.add(i, a[i]);
     }
 
+    let mut res = vec![];
     for _ in 0..q {
         input! {
             t: usize
@@ -75,9 +77,13 @@ fn main() {
                     r: usize,
                 }
                 let s = fw.sum(l, r);
-                println!("{}", s);
+                res.push(s);
             }
             _ => unreachable!(),
         }
+    }
+
+    for x in res {
+        println!("{}", x);
     }
 }
