@@ -14,6 +14,7 @@ pub mod segtree {
         fn e() -> Self;
     }
 
+    #[derive(Debug, Clone)]
     pub struct SegTree<S: Monoid> {
         n: usize,
         size: usize,
