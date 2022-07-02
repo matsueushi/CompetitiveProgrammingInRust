@@ -31,13 +31,15 @@ pub mod dijkstra {
 
     #[derive(Debug, Clone)]
     pub struct Graph {
+        n: usize,
         data: Vec<Vec<Edge>>,
     }
 
     impl Graph {
         pub fn new(n: usize) -> Self {
             Self {
-                data: vec![Vec::<Edge>::new(); n],
+                n,
+                data: vec![Vec::new(); n],
             }
         }
 
@@ -46,7 +48,7 @@ pub mod dijkstra {
         }
 
         pub fn dijkstra(&self, start: usize) -> Vec<Option<usize>> {
-            let mut dist: Vec<_> = (0..self.data.len()).map(|_| std::usize::MAX).collect();
+            let mut dist: Vec<_> = (0..self.n).map(|_| std::usize::MAX).collect();
             let mut heap = BinaryHeap::new();
 
             dist[start] = 0;
