@@ -12,8 +12,8 @@ pub mod scc {
         pub fn new(n: usize) -> Self {
             Self {
                 n,
-                data: vec![Vec::new(); n],
-                rev_data: vec![Vec::new(); n],
+                data: vec![vec![]; n],
+                rev_data: vec![vec![]; n],
             }
         }
 
