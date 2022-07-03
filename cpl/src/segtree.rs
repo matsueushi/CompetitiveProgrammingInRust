@@ -24,7 +24,7 @@ pub mod segtree {
 
     impl<S> SegTree<S>
     where
-        S: Clone + Monoid,
+        S: Monoid + Clone,
     {
         pub fn new(arr: &Vec<S>) -> Self {
             let n = arr.len();
@@ -33,7 +33,7 @@ pub mod segtree {
             let data = vec![S::e(); size << 1];
             let mut st = Self { n, log, size, data };
             for (i, val) in arr.into_iter().enumerate() {
-                st.data[i + size] = (*val).clone();
+                st.data[size + i] = (*val).clone();
             }
             for i in (1..size).rev() {
                 st.update(i);
@@ -41,24 +41,23 @@ pub mod segtree {
             st
         }
 
-        fn update(&mut self, idx: usize) {
-            self.data[idx] = self.data[idx << 1].op(&self.data[(idx << 1) + 1]);
+        fn update(&mut self, i: usize) {
+            self.data[i] = self.data[i << 1].op(&self.data[(i << 1) + 1]);
         }
 
-        pub fn set(&mut self, idx: usize, val: S) {
-            let idx = idx + self.size;
-            self.data[idx] = val.clone();
-            for k in 1..=self.log {
-                let j = idx >> k;
-                self.update(j);
+        pub fn set(&mut self, i: usize, val: S) {
+            let i = i + self.size;
+            self.data[i] = val.clone();
+            for j in 1..=self.log {
+                self.update(i >> j);
             }
         }
 
         pub fn prod(&self, l: usize, r: usize) -> S {
             let mut sml = S::e();
             let mut smr = S::e();
-            let mut l = l + self.size;
-            let mut r = r + self.size;
+            let mut l = self.size + l;
+            let mut r = self.size + r;
             while l < r {
                 if l & 1 == 1 {
                     sml = sml.op(&self.data[l]);
@@ -147,11 +146,11 @@ pub mod segtree {
         }
     }
 
-    impl<T: Monoid + Clone> Index<usize> for SegTree<T> {
-        type Output = T;
+    impl<S: Monoid + Clone> Index<usize> for SegTree<S> {
+        type Output = S;
 
-        fn index(&self, index: usize) -> &Self::Output {
-            &self.data[index + self.size]
+        fn index(&self, i: usize) -> &Self::Output {
+            &self.data[i + self.size]
         }
     }
 }
