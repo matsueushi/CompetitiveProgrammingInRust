@@ -42,7 +42,7 @@ pub mod ford_fulkerson {
                 cap: 0,
                 rev,
             });
-            self.edge_pos.push((from, self.data[from].len() - 1));
+            self.edge_pos.push((from, rev));
         }
 
         fn dfs(&mut self, used: &mut Vec<bool>, node: usize, target: usize, flow: usize) -> usize {
