@@ -1,5 +1,4 @@
 pub mod fenwick {
-
     use std::ops::{AddAssign, Sub};
 
     pub struct Fenwick<T> {
