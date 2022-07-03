@@ -3,6 +3,7 @@ pub mod dijkstra;
 pub mod fenwick;
 pub mod floor_sum;
 pub mod ford_fulkerson;
+pub mod lazy_segtree;
 pub mod next_permutation;
 pub mod power_mod;
 pub mod scc;

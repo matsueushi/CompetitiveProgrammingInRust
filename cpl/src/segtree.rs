@@ -46,7 +46,7 @@ pub mod segtree {
         }
 
         pub fn set(&mut self, i: usize, val: S) {
-            let i = i + self.size;
+            let i = self.size + i;
             self.data[i] = val.clone();
             for j in 1..=self.log {
                 self.update(i >> j);
@@ -54,10 +54,13 @@ pub mod segtree {
         }
 
         pub fn prod(&self, l: usize, r: usize) -> S {
-            let mut sml = S::e();
-            let mut smr = S::e();
+            if l == r {
+                return S::e();
+            }
             let mut l = self.size + l;
             let mut r = self.size + r;
+            let mut sml = S::e();
+            let mut smr = S::e();
             while l < r {
                 if l & 1 == 1 {
                     sml = sml.op(&self.data[l]);
@@ -160,7 +163,7 @@ mod tests {
     use super::segtree::*;
 
     #[test]
-    fn segtree0() {
+    fn test_segtree() {
         impl Monoid for usize {
             fn op(&self, other: &Self) -> Self {
                 std::cmp::min(*self, *other)
