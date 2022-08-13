@@ -1,11 +1,11 @@
 pub mod combination {
-    pub struct PrimeModCombination {
-        p: u64,
-        fact: Vec<u64>,
-        fact_inv: Vec<u64>,
+    pub struct PrimeModCombination<T> {
+        p: T,
+        fact: Vec<T>,
+        fact_inv: Vec<T>,
     }
 
-    impl PrimeModCombination {
+    impl PrimeModCombination<u64> {
         pub fn new(n: usize, p: u64) -> Self {
             // i! mod p
             let mut fact = vec![0; n + 1];
