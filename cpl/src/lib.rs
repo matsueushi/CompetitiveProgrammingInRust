@@ -7,6 +7,7 @@ pub mod lazy_segtree;
 pub mod lines;
 pub mod next_permutation;
 pub mod power_mod;
+pub mod primes;
 pub mod scc;
 pub mod segtree;
 pub mod two_sat;
