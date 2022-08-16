@@ -11,3 +11,4 @@ pub mod primes;
 pub mod scc;
 pub mod segtree;
 pub mod two_sat;
+pub mod union_find;
