@@ -29,6 +29,7 @@ pub mod union_find {
                 return x;
             }
             if self.size[x] < self.size[y] {
+                std::mem::swap(&mut x, &mut y);
                 (x, y) = (y, x);
             }
             self.size[x] += self.size[y];
