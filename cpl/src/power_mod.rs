@@ -1,6 +1,5 @@
 pub mod power_mod {
     use std::ops::{MulAssign, RemAssign, ShrAssign};
-
     use num::{PrimInt, Unsigned};
 
     pub fn pow_mod<T>(x: T, n: T, m: T) -> T
