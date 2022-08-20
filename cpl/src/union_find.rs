@@ -53,12 +53,28 @@ mod tests {
     use super::union_find::*;
 
     #[test]
-    fn test_union_find() {
+    fn test_union_find_0() {
         let mut uf = UnionFind::new(2);
         assert!(uf.in_same_set(0, 0));
         assert!(!uf.in_same_set(0, 1));
         assert_eq!(uf.union(0, 1), 0);
         assert_eq!(uf.find_root(1), 0);
         assert_eq!(uf.group_size(1), 2);
+    }
+
+    #[test]
+    fn test_union_find_1() {
+        let mut uf = UnionFind::new(6);
+        assert_eq!(uf.group_size(3), 1);
+        assert_eq!(uf.group_size(4), 1);
+        uf.union(3, 4);
+        assert_eq!(uf.group_size(2), 1);
+        assert_eq!(uf.group_size(3), 2);
+        assert_eq!(uf.group_size(4), 2);
+        uf.union(2, 3);
+        assert_eq!(uf.group_size(2), 3);
+        assert_eq!(uf.group_size(3), 3);
+        assert_eq!(uf.group_size(4), 3);
+        assert_eq!(uf.group_size(5), 1);
     }
 }
