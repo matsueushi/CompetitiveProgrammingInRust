@@ -12,5 +12,8 @@ fn main() {
     input! {
         n: usize,
     }
-    println!("{}", factorial(n));
+    println!(
+        "{}",
+        factorial(n).into_iter().map(|x| x.to_string()).join(" ")
+    );
 }

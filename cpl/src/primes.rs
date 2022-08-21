@@ -46,7 +46,6 @@ pub mod primes {
                 break;
             }
             while x % i == 0 {
-                println!("{}", x);
                 *res.entry(i).or_insert(0) += 1;
                 x /= i;
             }
