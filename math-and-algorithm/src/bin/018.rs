@@ -6,7 +6,7 @@ fn main() {
         n: usize,
         a: [usize; n],
     }
-    let mut v = vec![0; 5];
+    let mut v: Vec<usize> = vec![0; 5];
     for ai in a {
         v[ai / 100] += 1;
     }
