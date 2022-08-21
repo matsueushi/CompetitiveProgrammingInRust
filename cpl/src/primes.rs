@@ -1,4 +1,5 @@
 pub mod primes {
+    use std::collections::HashMap;
 
     pub fn primes(n: usize) -> Vec<usize> {
         let mut primes = Vec::new();
@@ -34,11 +35,34 @@ pub mod primes {
         }
         res
     }
+
+    pub fn prime_factor(n: usize) -> HashMap<usize, usize> {
+        let mut res = HashMap::new();
+        let mut i = 1;
+        let mut x = n;
+        loop {
+            i += 1;
+            if i * i > n {
+                break;
+            }
+            while x % i == 0 {
+                println!("{}", x);
+                *res.entry(i).or_insert(0) += 1;
+                x /= i;
+            }
+        }
+        if x != 1 {
+            res.insert(x, 1);
+        }
+        res
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::primes::*;
+    use std::collections::HashMap;
+    use std::iter::FromIterator;
 
     #[test]
     fn test_primes() {
@@ -51,5 +75,12 @@ mod tests {
         assert_eq!(divisor(2), vec![1, 2]);
         assert_eq!(divisor(10), vec![1, 10, 2, 5]);
         assert_eq!(divisor(9), vec![1, 9, 3]);
+    }
+
+    #[test]
+    fn test_prime_factor() {
+        assert_eq!(prime_factor(1), HashMap::new());
+        assert_eq!(prime_factor(7), HashMap::from_iter([(7, 1)]));
+        assert_eq!(prime_factor(8), HashMap::from_iter([(2, 3)]));
     }
 }
