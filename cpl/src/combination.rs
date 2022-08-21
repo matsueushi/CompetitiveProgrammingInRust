@@ -19,9 +19,8 @@ pub mod combination {
             fact_inv[1] = 1;
             iinv[1] = 1;
             for i in 2..n + 1 {
-                let j = i;
-                fact[i] = fact[i - 1] * j % p;
-                iinv[i] = p - iinv[(p % j) as usize] * (p / j) % p;
+                fact[i] = fact[i - 1] * i % p;
+                iinv[i] = p - iinv[p % i] * (p / i) % p;
                 fact_inv[i] = fact_inv[i - 1] * iinv[i] % p;
             }
             Self { p, fact, fact_inv }
