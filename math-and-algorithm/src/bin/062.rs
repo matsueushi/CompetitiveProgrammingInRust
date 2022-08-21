@@ -23,7 +23,7 @@ fn main() {
         }
     }
 
-    let x = if k <= walk.len() {
+    let x = if k < walk.len() {
         k
     } else {
         let st = visit[pos] as usize;
