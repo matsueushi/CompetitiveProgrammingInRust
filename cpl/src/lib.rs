@@ -5,6 +5,7 @@ pub mod floor_sum;
 pub mod ford_fulkerson;
 pub mod geom;
 pub mod lazy_segtree;
+pub mod matrix;
 pub mod next_permutation;
 pub mod power_mod;
 pub mod primes;
