@@ -113,7 +113,6 @@ mod tests {
         graph.add_edge(2, 1, 3);
         graph.add_edge(2, 4, 8);
         graph.add_edge(1, 4, 5);
-        println!("{:?}", graph);
         assert_eq!(graph.ford_fulkerson(3, 4), 11);
         assert_eq!(
             graph.edges(),

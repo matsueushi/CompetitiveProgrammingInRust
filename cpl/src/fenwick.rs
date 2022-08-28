@@ -63,7 +63,6 @@ pub mod fenwick {
             self.fw0.add(r, val * r as i64);
             self.fw1.add(l, val);
             self.fw1.add(r, -val);
-            println!("{:?}", self);
         }
 
         pub fn prefix_sum(&self, r: usize) -> i64 {
