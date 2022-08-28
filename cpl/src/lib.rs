@@ -1,3 +1,4 @@
+pub mod closed_path;
 pub mod combination;
 pub mod dijkstra;
 pub mod fenwick;
