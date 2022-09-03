@@ -22,7 +22,7 @@ pub mod lazy_segtree {
     // *: S x X -> S right action
 
     #[derive(Debug, Clone)]
-    pub struct LazySegTree<S: Monoid, X: Monoid + Action<S>> {
+    pub struct LazySegTree<S, X> {
         n: usize,
         size: usize,
         log: usize,
@@ -263,6 +263,19 @@ pub mod lazy_segtree {
                 }
             }
             0
+        }
+    }
+
+    impl<S: std::fmt::Debug, X: std::fmt::Debug> LazySegTree<S, X> {
+        pub fn debug(&self) {
+            #[cfg(debug_assertions)]
+            for i in 1..self.size {
+                if i > 1 && i.count_ones() == 1 {
+                    eprintln!();
+                }
+                eprint!("{:?} / {:?}; ", &self.data[i], &self.lazy[i]);
+            }
+            eprintln!();
         }
     }
 }
