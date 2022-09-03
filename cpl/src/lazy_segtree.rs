@@ -269,11 +269,16 @@ pub mod lazy_segtree {
     impl<S: std::fmt::Debug, X: std::fmt::Debug> LazySegTree<S, X> {
         pub fn debug(&self) {
             #[cfg(debug_assertions)]
+            println!("---");
             for i in 1..self.size {
                 if i > 1 && i.count_ones() == 1 {
                     eprintln!();
                 }
                 eprint!("{:?} / {:?}; ", &self.data[i], &self.lazy[i]);
+            }
+            eprintln!();
+            for i in self.size..self.size << 1 {
+                eprint!("{:?} / - ; ", &self.data[i]);
             }
             eprintln!();
         }
