@@ -1,55 +1,50 @@
-// use proconio::{fastout, input, source::line::LineSource};
+use std::io::BufReader;
 
-// #[fastout]
-// fn main() {
-//     let stdin = std::io::stdin();
-//     let mut source = LineSource::new(stdin.lock());
+use proconio::{input, source::line::LineSource};
 
-//     input! {
-//         from &mut source,
-//         n: usize,
-//     }
-//     drop(source);
+fn main() {
+    let stdin = std::io::stdin();
+    let mut source = LineSource::new(BufReader::new(stdin));
 
-//     let mut l = 1;
-//     let mut r = 10;
-//     for _ in 0..10 {
-//         let mut source = LineSource::new(stdin.lock());
-//         let m = (l + r) / 2;
-//         println!("? {} {} 1 {}", l, m, n);
-//         input! {
-//             from &mut source,
-//             count: usize,
-//         }
-//         drop(source);
+    input! {
+        from &mut source,
+        n: usize,
+    }
 
-//         if count == l - m + 1 {
-//             l = m + 1;
-//         } else {
-//             r = m;
-//         }
-//     }
-//     let x = l;
+    let mut l = 1;
+    let mut r = n;
+    for _ in 0..10 {
+        let m = (l + r) / 2;
+        println!("? {} {} 1 {}", l, m, n);
+        input! {
+            from &mut source,
+            count: usize,
+        }
 
-//     l = 1;
-//     r = 10;
-//     for _ in 0..10 {
-//         let mut source = LineSource::new(stdin.lock());
-//         let m = (l + r) / 2;
-//         println!("? {} {} {} {}", x, x, l, m);
-//         input! {
-//             from &mut source,
-//             count: usize,
-//         }
-//         drop(source);
-//         if count == l - m + 1 {
-//             l = m + 1;
-//         } else {
-//             r = m;
-//         }
-//     }
-//     let y = l;
+        if count == m - l + 1 {
+            l = m + 1;
+        } else {
+            r = m;
+        }
+    }
+    let x = l;
 
-//     println!("! {} {}", x, y);
-//     drop(source);
-// }
+    l = 1;
+    r = n;
+    for _ in 0..10 {
+        let m = (l + r) / 2;
+        println!("? 1 {} {} {}", n, l, m);
+        input! {
+            from &mut source,
+            count: usize,
+        }
+        if count == m - l + 1 {
+            l = m + 1;
+        } else {
+            r = m;
+        }
+    }
+    let y = l;
+
+    println!("! {} {}", x, y);
+}
