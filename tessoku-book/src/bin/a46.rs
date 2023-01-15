@@ -1,4 +1,5 @@
 use proconio::input;
+use rand::{thread_rng, Rng};
 
 #[derive(Debug)]
 struct Point {
@@ -13,10 +14,10 @@ fn get_distance(a: &Point, b: &Point) -> f64 {
 }
 
 // 貪欲法
-
+#[allow(dead_code)]
 fn play_greedy(points: Vec<Point>) -> Vec<usize> {
     let n = points.len();
-    let mut orders = vec![0; n];
+    let mut orders = vec![0; n + 1];
 
     let mut current_place = 0;
     let mut visited = vec![false; n];
@@ -46,6 +47,48 @@ fn play_greedy(points: Vec<Point>) -> Vec<usize> {
         current_place = min_id;
     }
 
+    orders[n] = 0;
+    orders
+}
+
+// 局所探索法
+const MAX_CLIMBING: usize = 200000;
+
+fn get_score(points: &Vec<Point>, orders: &Vec<usize>) -> f64 {
+    let score = orders
+        .windows(2)
+        .map(|x| get_distance(&points[x[0]], &points[x[1]]))
+        .sum();
+    score
+}
+
+fn hill_climbming(points: Vec<Point>) -> Vec<usize> {
+    let n = points.len();
+    let mut orders = vec![0; n + 1];
+
+    // 初期解作成
+    for i in 0..n {
+        orders[i] = i;
+    }
+
+    let mut rng = thread_rng();
+    let mut score = get_score(&points, &orders);
+    for _ in 0..MAX_CLIMBING {
+        let mut l: usize = rng.gen_range(1, n);
+        let mut r: usize = rng.gen_range(1, n);
+        if l > r {
+            std::mem::swap(&mut l, &mut r);
+        }
+        orders[l..=r].reverse();
+        let new_score = get_score(&points, &orders);
+        if score > new_score {
+            score = new_score;
+            eprintln!("{}", score);
+        } else {
+            orders[l..=r].reverse();
+        }
+    }
+
     orders
 }
 
@@ -61,10 +104,10 @@ fn main() {
     }
 
     // 貪欲法
-    let orders = play_greedy(points);
+    // let orders = play_greedy(points);
+    let orders = hill_climbming(points);
 
     for i in orders {
         println!("{}", i + 1);
     }
-    println!("1");
 }
