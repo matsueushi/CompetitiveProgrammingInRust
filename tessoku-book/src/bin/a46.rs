@@ -13,7 +13,7 @@ fn get_distance(a: &Point, b: &Point) -> f64 {
 }
 
 fn play_greedy(n: usize, points: Vec<Point>) -> Vec<usize> {
-    let mut order = vec![0; n];
+    let mut orders = vec![0; n];
 
     let mut current_place = 1;
     let mut visited = vec![false; n];
@@ -39,11 +39,11 @@ fn play_greedy(n: usize, points: Vec<Point>) -> Vec<usize> {
 
         // 現在位置の更新
         visited[min_id] = true;
-        order[i] = min_id;
+        orders[i] = min_id;
         current_place = min_id;
     }
 
-    order
+    orders
 }
 
 fn main() {
@@ -56,8 +56,8 @@ fn main() {
     for (x, y) in xys {
         points.push(Point { x, y });
     }
-    let order = play_greedy(n, points);
-    for i in order {
+    let orders = play_greedy(n, points);
+    for i in orders {
         println!("{}", i + 1);
     }
     println!("1");
