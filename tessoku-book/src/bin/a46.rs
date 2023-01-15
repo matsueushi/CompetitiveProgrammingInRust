@@ -13,7 +13,17 @@ fn get_distance(a: &Point, b: &Point) -> f64 {
     ((dx * dx + dy * dy) as f64).sqrt()
 }
 
-// 貪欲法
+fn get_score(points: &Vec<Point>, orders: &Vec<usize>) -> f64 {
+    let score = orders
+        .windows(2)
+        .map(|x| get_distance(&points[x[0]], &points[x[1]]))
+        .sum();
+    score
+}
+
+/*
+貪欲法
+*/
 #[allow(dead_code)]
 fn play_greedy(points: Vec<Point>) -> Vec<usize> {
     let n = points.len();
@@ -51,17 +61,13 @@ fn play_greedy(points: Vec<Point>) -> Vec<usize> {
     orders
 }
 
-// 局所探索法
+/*
+局所探索法
+*/
+#[allow(dead_code)]
 const MAX_CLIMBING: usize = 200000;
 
-fn get_score(points: &Vec<Point>, orders: &Vec<usize>) -> f64 {
-    let score = orders
-        .windows(2)
-        .map(|x| get_distance(&points[x[0]], &points[x[1]]))
-        .sum();
-    score
-}
-
+#[allow(dead_code)]
 fn hill_climbming(points: Vec<Point>) -> Vec<usize> {
     let n = points.len();
     let mut orders = vec![0; n + 1];
@@ -92,6 +98,44 @@ fn hill_climbming(points: Vec<Point>) -> Vec<usize> {
     orders
 }
 
+/*
+焼きなまし法
+*/
+const MAX_ANNEALING: usize = 200000;
+
+fn simulated_annealing(points: Vec<Point>) -> Vec<usize> {
+    let n = points.len();
+    let mut orders = vec![0; n + 1];
+
+    // 初期解作成
+    for i in 0..n {
+        orders[i] = i;
+    }
+
+    let mut rng = thread_rng();
+    let mut score = get_score(&points, &orders);
+    for i in 0..MAX_ANNEALING {
+        let mut l: usize = rng.gen_range(1, n);
+        let mut r: usize = rng.gen_range(1, n);
+        if l > r {
+            std::mem::swap(&mut l, &mut r);
+        }
+
+        orders[l..=r].reverse();
+        let new_score = get_score(&points, &orders);
+
+        let t = 30.0 - 28.00 * (i as f64) / 200000.0;
+        let prob = ((score - new_score) / t).exp().min(1.0);
+        let p: f64 = rng.gen();
+        if p < prob {
+            score = new_score;
+        } else {
+            orders[l..=r].reverse();
+        }
+    }
+
+    orders
+}
 fn main() {
     // cargo run --bin tessoku-book-a46 < src/bin/a46_input.txt > src/bin/a46_output.txt
     input! {
@@ -105,7 +149,12 @@ fn main() {
 
     // 貪欲法
     // let orders = play_greedy(points);
-    let orders = hill_climbming(points);
+
+    // 局所探索法
+    // let orders = hill_climbming(points);
+
+    // 焼きなまし法
+    let orders = simulated_annealing(points);
 
     for i in orders {
         println!("{}", i + 1);
