@@ -47,6 +47,7 @@ fn play_greedy(n: usize, points: Vec<Point>) -> Vec<usize> {
 }
 
 fn main() {
+    // cargo run --bin tessoku-book-a46 < src/bin/a46_input.txt > src/bin/a46_output.txt
     input! {
         n: usize,
         xys: [(i64, i64); n],
