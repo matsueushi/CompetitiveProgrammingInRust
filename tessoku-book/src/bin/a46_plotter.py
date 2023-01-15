@@ -18,6 +18,7 @@ if __name__ == "__main__":
 
     # 可視化する
     plt.scatter(xs, ys, color="b")
+    plt.axis('square')
     for i in range(n):
         plt.text(xs[i] + 0.05, ys[i] + 0.05, i + 1)
 

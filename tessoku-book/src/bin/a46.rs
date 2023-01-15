@@ -15,7 +15,7 @@ fn get_distance(a: &Point, b: &Point) -> f64 {
 fn play_greedy(n: usize, points: Vec<Point>) -> Vec<usize> {
     let mut orders = vec![0; n];
 
-    let mut current_place = 1;
+    let mut current_place = 0;
     let mut visited = vec![false; n];
 
     visited[0] = true;
