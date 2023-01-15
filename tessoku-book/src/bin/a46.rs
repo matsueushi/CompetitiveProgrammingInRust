@@ -12,7 +12,10 @@ fn get_distance(a: &Point, b: &Point) -> f64 {
     ((dx * dx + dy * dy) as f64).sqrt()
 }
 
-fn play_greedy(n: usize, points: Vec<Point>) -> Vec<usize> {
+// 貪欲法
+
+fn play_greedy(points: Vec<Point>) -> Vec<usize> {
+    let n = points.len();
     let mut orders = vec![0; n];
 
     let mut current_place = 0;
@@ -56,7 +59,10 @@ fn main() {
     for (x, y) in xys {
         points.push(Point { x, y });
     }
-    let orders = play_greedy(n, points);
+
+    // 貪欲法
+    let orders = play_greedy(points);
+
     for i in orders {
         println!("{}", i + 1);
     }

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    # cat src/bin/a46_input.txt src/bin/a46_output.txt | python3 src/bin/a46_plotter.py
+    # cargo run --bin tessoku-book-a46 < src/bin/a46_input.txt > src/bin/a46_output.txt ; cat src/bin/a46_input.txt src/bin/a46_output.txt | python3 src/bin/a46_plotter.py
     # 入力データの読み込み
     n = int(input())
     xs = []
