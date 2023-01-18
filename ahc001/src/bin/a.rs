@@ -13,15 +13,15 @@ pub struct Rect {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AdReq {
+pub struct Condition {
     pub p: Point,
     pub r: usize,
 }
 
 #[allow(dead_code)]
-fn atcoder_ad(input: &Vec<AdReq>) -> Vec<Rect> {
+fn atcoder_ad(input: &Vec<Condition>) -> Vec<Rect> {
     let mut res = Vec::new();
-    for AdReq { p, r } in input {
+    for Condition { p, r: _ } in input {
         res.push(Rect {
             p1: Point { x: p.x, y: p.y },
             p2: Point {
@@ -40,7 +40,7 @@ fn main_submit() {
     }
     let mut input = Vec::new();
     for (ai, bi, ri) in xyr {
-        input.push(AdReq {
+        input.push(Condition {
             p: Point { x: ai, y: bi },
             r: ri,
         });
@@ -58,5 +58,3 @@ fn main_evaluation() {}
 fn main() {
     main_submit();
 }
-
-// cat tools/in/0001.txt | cargo run --bin ahc001-a
