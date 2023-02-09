@@ -1,60 +1,32 @@
-use proconio::{fastout, input};
+use proconio::input;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Point {
-    pub x: usize,
-    pub y: usize,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Rect {
-    pub p1: Point,
-    pub p2: Point,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Condition {
-    pub p: Point,
-    pub r: usize,
-}
-
-#[allow(dead_code)]
-fn atcoder_ad(input: &Vec<Condition>) -> Vec<Rect> {
-    let mut res = Vec::new();
-    for Condition { p, r: _ } in input {
-        res.push(Rect {
-            p1: Point { x: p.x, y: p.y },
-            p2: Point {
-                x: p.x + 1,
-                y: p.y + 1,
-            },
-        });
-    }
-    res
-}
-
-fn main_submit() {
+/// 入力を読み込む
+fn read_input() -> Vec<(usize, usize, usize)> {
     input! {
         n: usize,
         xyr: [(usize, usize, usize); n],
     }
-    let mut input = Vec::new();
-    for (ai, bi, ri) in xyr {
-        input.push(Condition {
-            p: Point { x: ai, y: bi },
-            r: ri,
-        });
-    }
-    let res = atcoder_ad(&input);
-    for rect in res {
-        println!("{} {} {} {}", rect.p1.x, rect.p1.y, rect.p2.x, rect.p2.y);
-    }
+    xyr
 }
 
-#[allow(dead_code)]
-fn main_evaluation() {}
+/// 解を捜索する
+fn find_arrangement(input_data: &Vec<(usize, usize, usize)>) -> Vec<(usize, usize, usize, usize)> {
+    let mut agmt = Vec::new();
+    for (x, y, r) in input_data {
+        agmt.push((*x, *y, *x + 1, *y + 1));
+    }
+    agmt
+}
 
-#[fastout]
+/// 入力データ
+
+/// エントリーポイント
+/// 実行するときは、
+/// cat tools/in/0000.txt | cargo run --bin ahc001-a > tools/out/0000.txt
 fn main() {
-    main_submit();
+    let input_data = read_input();
+    let solution = find_arrangement(&input_data);
+    for (a, b, c, d) in solution {
+        println!("{} {} {} {}", a, b, c, d);
+    }
 }
