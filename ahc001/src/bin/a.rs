@@ -1,10 +1,12 @@
+use rand::{thread_rng, Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 use proconio::input;
-use rand::{thread_rng, Rng, SeedableRng};
+use svg::node::element::{path::Data, Path};
 
 const W: usize = 10000;
 const MAX_ITER: usize = 2500;
+const VERBOSE: usize = 10;
 
 /// 点
 #[derive(Clone, Debug)]
@@ -45,6 +47,14 @@ impl Rect {
     pub fn contains(&self, p: &Point) -> bool {
         self.p0.x <= p.x && p.x <= self.p1.x && self.p0.y <= p.y && p.y <= self.p1.y
     }
+
+    /// 中心
+    pub fn center(&self) -> Point {
+        Point {
+            x: (self.p0.x + self.p1.x) / 2,
+            y: (self.p0.y + self.p1.y) / 2,
+        }
+    }
 }
 
 /// 解のアレンジメント
@@ -53,63 +63,6 @@ type Arrangement = Vec<Rect>;
 // fn temperature(round: usize) -> f64 {
 //     30.0 - 28.0 * round as f64 / MAX_ITER as f64
 // }
-
-/// 解を捜索する
-fn find_arrangement(input_data: &Input) -> Arrangement {
-    let mut rects = Vec::new();
-
-    // 最初の解を探索する
-    for Request {
-        p: Point { x, y },
-        area: _,
-    } in input_data
-    {
-        rects.push(Rect {
-            p0: Point {
-                x: *x as i64,
-                y: *y as i64,
-            },
-            p1: Point {
-                x: (*x + 1) as i64,
-                y: (*y + 1) as i64,
-            },
-        });
-    }
-    let mut score = eval_score(input_data, &rects);
-    let mut rng = thread_rng();
-    let n = input_data.len();
-
-    let dx0 = [1, 0, -1, 0, 0, 0, 0, 0];
-    let dy0 = [0, 1, 0, -1, 0, 0, 0, 0];
-    let dx1 = [0, 0, 0, 0, 1, 0, -1, 0];
-    let dy1 = [0, 0, 0, 0, 0, 1, 0, -1];
-
-    for _round in 0..MAX_ITER {
-        // eprintln!("Score: {}", score);
-        let pos = rng.gen_range(0, n);
-        let state = rng.gen_range(0, 8);
-        let enl = rng.gen_range(1, 100);
-        rects[pos].p0.x += dx0[state] * enl;
-        rects[pos].p0.y += dy0[state] * enl;
-        rects[pos].p1.x += dx1[state] * enl;
-        rects[pos].p1.y += dy1[state] * enl;
-        let new_score = eval_score(input_data, &rects);
-
-        // let temp = temperature(round);
-        // let th = ((score - new_score) as f64 / temp).exp().min(1.0);
-        // if new_score > 0 && rng.gen::<f64>() < th {
-        if new_score >= score {
-            score = new_score;
-        } else {
-            rects[pos].p0.x -= dx0[state] * enl;
-            rects[pos].p0.y -= dy0[state] * enl;
-            rects[pos].p1.x -= dx1[state] * enl;
-            rects[pos].p1.y -= dy1[state] * enl;
-        }
-    }
-
-    rects
-}
 
 /// スコアを計算する
 fn eval_score(input_data: &Input, agmt: &Arrangement) -> i64 {
@@ -144,6 +97,68 @@ fn eval_score(input_data: &Input, agmt: &Arrangement) -> i64 {
         score += 1.0 - (1.0 - ti) * (1.0 - ti);
     }
     (1e9 * score / n as f64).round() as i64
+}
+
+/// 解を捜索する
+fn find_arrangement(input_data: &Input) -> Arrangement {
+    let mut rects = Vec::new();
+    // スコアの履歴
+    let mut score_hist = Vec::new();
+
+    // 最初の解を探索する
+    for Request {
+        p: Point { x, y },
+        area: _,
+    } in input_data
+    {
+        rects.push(Rect {
+            p0: Point {
+                x: *x as i64,
+                y: *y as i64,
+            },
+            p1: Point {
+                x: (*x + 1) as i64,
+                y: (*y + 1) as i64,
+            },
+        });
+    }
+    let mut score = eval_score(input_data, &rects);
+    let mut rng = thread_rng();
+    let n = input_data.len();
+
+    let dx0 = [1, 0, -1, 0, 0, 0, 0, 0];
+    let dy0 = [0, 1, 0, -1, 0, 0, 0, 0];
+    let dx1 = [0, 0, 0, 0, 1, 0, -1, 0];
+    let dy1 = [0, 0, 0, 0, 0, 1, 0, -1];
+
+    for round in 0..MAX_ITER {
+        // eprintln!("Score: {}", score);
+        let pos = rng.gen_range(0, n);
+        let state = rng.gen_range(0, 8);
+        let enl = rng.gen_range(1, 100);
+        rects[pos].p0.x += dx0[state] * enl;
+        rects[pos].p0.y += dy0[state] * enl;
+        rects[pos].p1.x += dx1[state] * enl;
+        rects[pos].p1.y += dy1[state] * enl;
+        let new_score = eval_score(input_data, &rects);
+
+        if new_score >= score {
+            score = new_score;
+        } else {
+            rects[pos].p0.x -= dx0[state] * enl;
+            rects[pos].p0.y -= dy0[state] * enl;
+            rects[pos].p1.x -= dx1[state] * enl;
+            rects[pos].p1.y -= dy1[state] * enl;
+        }
+
+        // 学習の履歴
+        if VERBOSE > 0 && round % VERBOSE == 0 {
+            score_hist.push(score);
+            visualize(&input_data, &rects);
+        }
+    }
+
+    rects
 }
 
 /// 入力関連
@@ -216,6 +231,43 @@ fn generate_input(state: u64) -> Input {
         });
     }
     sps
+}
+
+/// 可視化関連
+fn rect(r: &Rect) -> Data {
+    Data::new()
+        .move_to((r.p0.x, r.p0.y))
+        .line_by((r.p1.x - r.p0.x, 0))
+        .line_by((0, r.p1.y - r.p0.y))
+        .line_by((r.p0.x - r.p1.x, 0))
+        .close()
+}
+
+fn visualize(input_data: &Input, rects: &Vec<Rect>) {
+    let mut doc = svg::Document::new().set("viewBox", (0, 0, W, W));
+    doc = doc.add(Path::new().set("fill", "white").set(
+        "d",
+        rect(&Rect {
+            p0: Point { x: 0, y: 0 },
+            p1: Point {
+                x: W as i64,
+                y: W as i64,
+            },
+        }),
+    ));
+    let fontsize = 200.0 / (input_data.len() as f64 / 50.0).sqrt();
+    for i in 0..input_data.len() {
+        let center = rects[i].center();
+        doc = doc.add(
+            svg::node::element::Text::new()
+                .set("x", center.x as f64)
+                .set("y", center.y as f64 + fontsize * 0.35)
+                .set("font-size", fontsize)
+                .set("text-anchor", "middle")
+                .add(svg::node::Text::new(format!("{}", i))),
+        )
+    }
+    svg::save("a.svg", &doc).unwrap();
 }
 
 /// エントリーポイント
