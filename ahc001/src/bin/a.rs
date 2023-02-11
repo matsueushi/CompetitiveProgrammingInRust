@@ -4,7 +4,7 @@ use proconio::input;
 use rand::{thread_rng, Rng, SeedableRng};
 
 const W: usize = 10000;
-const MAX_ITER: usize = 1000;
+const MAX_ITER: usize = 2500;
 
 /// 点
 #[derive(Clone, Debug)]
@@ -50,6 +50,10 @@ impl Rect {
 /// 解のアレンジメント
 type Arrangement = Vec<Rect>;
 
+// fn temperature(round: usize) -> f64 {
+//     30.0 - 28.0 * round as f64 / MAX_ITER as f64
+// }
+
 /// 解を捜索する
 fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut rects = Vec::new();
@@ -75,21 +79,25 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut rng = thread_rng();
     let n = input_data.len();
 
-    let dx0 = [1, 0, -1, 0, 0, 0, 0, 0, 1, 0, -1, 0, -1, 0, 1, 0];
-    let dy0 = [0, 1, 0, -1, 0, 0, 0, 0, 0, 1, 0, -1, 0, -1, 0, -1];
-    let dx1 = [0, 0, 0, 0, 1, 0, -1, 0, -1, 0, 1, 0, 1, 0, -1, 0];
-    let dy1 = [0, 0, 0, 0, 0, 1, 0, -1, 0, -1, 0, 1, 0, 1, 0, -1];
+    let dx0 = [1, 0, -1, 0, 0, 0, 0, 0];
+    let dy0 = [0, 1, 0, -1, 0, 0, 0, 0];
+    let dx1 = [0, 0, 0, 0, 1, 0, -1, 0];
+    let dy1 = [0, 0, 0, 0, 0, 1, 0, -1];
 
-    for _ in 0..MAX_ITER {
+    for _round in 0..MAX_ITER {
         // eprintln!("Score: {}", score);
         let pos = rng.gen_range(0, n);
-        let state = rng.gen_range(0, 16);
-        let enl = rng.gen_range(1, 1000);
+        let state = rng.gen_range(0, 8);
+        let enl = rng.gen_range(1, 100);
         rects[pos].p0.x += dx0[state] * enl;
         rects[pos].p0.y += dy0[state] * enl;
         rects[pos].p1.x += dx1[state] * enl;
         rects[pos].p1.y += dy1[state] * enl;
         let new_score = eval_score(input_data, &rects);
+
+        // let temp = temperature(round);
+        // let th = ((score - new_score) as f64 / temp).exp().min(1.0);
+        // if new_score > 0 && rng.gen::<f64>() < th {
         if new_score >= score {
             score = new_score;
         } else {
