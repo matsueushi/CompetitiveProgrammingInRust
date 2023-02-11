@@ -1,9 +1,10 @@
 use std::collections::BTreeSet;
 
 use proconio::input;
-use rand::{Rng, SeedableRng};
+use rand::{thread_rng, Rng, SeedableRng};
 
 const W: usize = 10000;
+const MAX_ITER: usize = 1000;
 
 /// 点
 #[derive(Clone, Debug)]
@@ -37,27 +38,27 @@ impl Rect {
 
     /// 座標の順序が正しいか
     fn is_valid(&self) -> bool {
-        self.p0.x >= self.p1.x || self.p0.y >= self.p1.y
+        self.p0.x < self.p1.x && self.p0.y < self.p1.y
     }
 
     /// 点を含むか
-    pub fn contains(&self, x: i64, y: i64) -> bool {
-        self.p0.x <= x && x <= self.p1.x && self.p0.y <= y && y <= self.p1.y
+    pub fn contains(&self, p: &Point) -> bool {
+        self.p0.x <= p.x && p.x <= self.p1.x && self.p0.y <= p.y && p.y <= self.p1.y
     }
 }
 
 /// 解のアレンジメント
-struct Arrangement {
-    pub rects: Vec<Rect>,
-}
+type Arrangement = Vec<Rect>;
 
 /// 解を捜索する
 fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut rects = Vec::new();
+
+    // 最初の解を探索する
     for Request {
         p: Point { x, y },
-        size: _,
-    } in &input_data.sps
+        area: _,
+    } in input_data
     {
         rects.push(Rect {
             p0: Point {
@@ -70,24 +71,71 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
             },
         });
     }
-    Arrangement { rects }
+    let mut score = eval_score(input_data, &rects);
+    let mut rng = thread_rng();
+    let n = input_data.len();
+
+    let dx0 = [1, 0, -1, 0, 0, 0, 0, 0, 1, 0, -1, 0, -1, 0, 1, 0];
+    let dy0 = [0, 1, 0, -1, 0, 0, 0, 0, 0, 1, 0, -1, 0, -1, 0, -1];
+    let dx1 = [0, 0, 0, 0, 1, 0, -1, 0, -1, 0, 1, 0, 1, 0, -1, 0];
+    let dy1 = [0, 0, 0, 0, 0, 1, 0, -1, 0, -1, 0, 1, 0, 1, 0, -1];
+
+    for _ in 0..MAX_ITER {
+        // eprintln!("Score: {}", score);
+        let pos = rng.gen_range(0, n);
+        let state = rng.gen_range(0, 16);
+        let enl = rng.gen_range(1, 1000);
+        rects[pos].p0.x += dx0[state] * enl;
+        rects[pos].p0.y += dy0[state] * enl;
+        rects[pos].p1.x += dx1[state] * enl;
+        rects[pos].p1.y += dy1[state] * enl;
+        let new_score = eval_score(input_data, &rects);
+        if new_score >= score {
+            score = new_score;
+        } else {
+            rects[pos].p0.x -= dx0[state] * enl;
+            rects[pos].p0.y -= dy0[state] * enl;
+            rects[pos].p1.x -= dx1[state] * enl;
+            rects[pos].p1.y -= dy1[state] * enl;
+        }
+    }
+
+    rects
 }
 
 /// スコアを計算する
-fn eval_score(input_data: &Input, agmt: &Arrangement) -> usize {
-    let n = input_data.sps.len();
+fn eval_score(input_data: &Input, agmt: &Arrangement) -> i64 {
+    let n = input_data.len();
     let mut score = 0.0;
     for i in 0..n {
-        if agmt.rects[i].out_of_range() {
+        if agmt[i].out_of_range() {
             // out of range
+            // eprintln!("out of range: {}", i);
             return 0;
         }
-        if !agmt.rects[i].is_valid() {
+        if !agmt[i].is_valid() {
             // negative area
+            // eprintln!("negative area: {}", i);
             return 0;
         }
+        if !agmt[i].contains(&input_data[i].p) {
+            // 点を含まない場合はスコアには関与しない
+            // eprintln!("point is not included: {}", i);
+            continue;
+        }
+        for j in 0..i {
+            if agmt[i].intersect(&agmt[j]) {
+                // オーバーラップしているものがある
+                // eprintln!("overlap: {} {}", i, j);
+                return 0;
+            }
+        }
+        let ri = agmt[i].area() as f64;
+        let si = input_data[i].area as f64;
+        let ti = ri.min(si) / ri.max(si);
+        score += 1.0 - (1.0 - ti) * (1.0 - ti);
     }
-    0
+    (1e9 * score / n as f64).round() as i64
 }
 
 /// 入力関連
@@ -96,29 +144,27 @@ fn eval_score(input_data: &Input, agmt: &Arrangement) -> usize {
 #[derive(Clone, Debug)]
 pub struct Request {
     p: Point,
-    size: usize,
+    area: i64,
 }
 
 /// 入力を保持するクラス
-pub struct Input {
-    sps: Vec<Request>,
-}
+type Input = Vec<Request>;
 
 /// 入力を読み込む
 #[allow(dead_code)]
 fn read_input() -> Input {
     input! {
         n: usize,
-        xyr: [(i64, i64, usize); n],
+        xyr: [(i64, i64, i64); n],
     }
     let mut sps = Vec::new();
-    for (x, y, size) in xyr {
+    for (x, y, area) in xyr {
         sps.push(Request {
             p: Point { x, y },
-            size,
+            area,
         });
     }
-    Input { sps }
+    sps
 }
 
 /// 入力を生成する
@@ -146,9 +192,9 @@ fn generate_input(state: u64) -> Input {
     q.push(W * W);
     q.sort();
 
-    let mut size = Vec::new();
+    let mut area = Vec::new();
     for i in 0..n {
-        size.push(q[i + 1] - q[i]);
+        area.push((q[i + 1] - q[i]) as i64);
     }
 
     let mut sps = Vec::new();
@@ -158,10 +204,10 @@ fn generate_input(state: u64) -> Input {
                 x: ps[i].0,
                 y: ps[i].1,
             },
-            size: size[i],
+            area: area[i],
         });
     }
-    Input { sps }
+    sps
 }
 
 /// エントリーポイント
@@ -178,37 +224,8 @@ fn main() {
     for Rect {
         p0: Point { x: x0, y: y0 },
         p1: Point { x: x1, y: y1 },
-    } in solution.rects
+    } in solution
     {
         println!("{} {} {} {}", x0, y0, x1, y1);
-    }
-}
-
-/// テスト
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_rect() {
-        let rect0 = Rect {
-            p0: Point { x: 0, y: 0 },
-            p1: Point { x: 3, y: 3 },
-        };
-        let rect1 = Rect {
-            p0: Point { x: 1, y: 1 },
-            p1: Point { x: 4, y: 4 },
-        };
-        let rect2 = Rect {
-            p0: Point { x: 0, y: 0 },
-            p1: Point { x: 1, y: 4 },
-        };
-
-        assert_eq!(9, rect0.area());
-        assert_eq!(9, rect1.area());
-        assert_eq!(4, rect2.area());
-
-        assert!(rect0.intersect(&rect1));
-        assert!(!rect1.intersect(&rect2));
     }
 }
