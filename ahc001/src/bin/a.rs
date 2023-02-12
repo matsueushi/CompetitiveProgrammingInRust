@@ -1,24 +1,15 @@
-use num_integer::Roots;
 use proconio::input;
 use rand::{thread_rng, Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 const W: usize = 10000;
-const MAX_ITER: usize = 10000;
+const MAX_ITER: usize = 25000;
 
 /// 点
 #[derive(Clone, Debug)]
 struct Point {
     x: i64,
     y: i64,
-}
-
-impl Point {
-    /// 動かす
-    fn move_by(&mut self, dx: i64, dy: i64) {
-        self.x += dx;
-        self.y += dy;
-    }
 }
 
 /// 長方形
@@ -51,26 +42,46 @@ impl Rect {
 
     /// 点を含むか
     pub fn contains(&self, p: &Point) -> bool {
-        self.p0.x <= p.x && p.x <= self.p1.x && self.p0.y <= p.y && p.y <= self.p1.y
+        // 点 (p.x + 0.5, p.y + 0.5) を含まなくてはならない
+        self.p0.x <= p.x && p.x < self.p1.x && self.p0.y <= p.y && p.y < self.p1.y
     }
 
     /// 動かす
-    pub fn move_by(&mut self, dx0: i64, dy0: i64, dx1: i64, dy1: i64) {
-        self.p0.move_by(dx0, dy0);
-        self.p1.move_by(dx1, dy1);
+    pub fn extend(&self, dx0: i64, dy0: i64, dx1: i64, dy1: i64) -> Self {
+        Self {
+            p0: Point {
+                x: (self.p0.x + dx0).max(0),
+                y: (self.p0.y + dy0).min(W as i64),
+            },
+            p1: Point {
+                x: (self.p1.x + dx1).max(0),
+                y: (self.p1.y + dy1).min(W as i64),
+            },
+        }
     }
 
     /// 変換
-    pub fn transform(&mut self, i: usize, s: i64) {
+    pub fn transform(&self, i: usize, s: i64) -> Self {
         match i {
-            0 => self.move_by(s, 0, 0, 0),
-            1 => self.move_by(0, s, 0, 0),
-            2 => self.move_by(0, 0, s, 0),
-            3 => self.move_by(0, 0, 0, s),
-            4 => self.move_by(-s, 0, 0, 0),
-            5 => self.move_by(0, -s, 0, 0),
-            6 => self.move_by(0, 0, -s, 0),
-            7 => self.move_by(0, 0, 0, -s),
+            0 => self.extend(s, 0, 0, 0),
+            1 => self.extend(0, s, 0, 0),
+            2 => self.extend(0, 0, s, 0),
+            3 => self.extend(0, 0, 0, s),
+            4 => self.extend(-s, 0, 0, 0),
+            5 => self.extend(0, -s, 0, 0),
+            6 => self.extend(0, 0, -s, 0),
+            7 => self.extend(0, 0, 0, -s),
+            _ => unreachable!(),
+        }
+    }
+
+    /// スライドさせる
+    pub fn slide(&self, i: usize, s: i64) -> Self {
+        match i {
+            0 => self.extend(-s, 0, s, 0),
+            1 => self.extend(0, -s, 0, s),
+            2 => self.extend(s, 0, -s, 0),
+            3 => self.extend(0, s, 0, -s),
             _ => unreachable!(),
         }
     }
@@ -112,7 +123,8 @@ fn eval_score(input_data: &Input, rects: &Arrangement) -> i64 {
         if !rects[i].contains(&input_data[i].p) {
             // 点を含まない場合はスコアには関与しない
             // eprintln!("point is not included: {}", i);
-            continue;
+            // スコアに関与しないが、ペナルティとして0にしてしまう
+            return 0;
         }
         for j in 0..i {
             if rects[i].intersect(&rects[j]) {
@@ -121,6 +133,7 @@ fn eval_score(input_data: &Input, rects: &Arrangement) -> i64 {
                 return 0;
             }
         }
+
         let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
         score += 1.0 - (1.0 - ti) * (1.0 - ti);
     }
@@ -158,25 +171,34 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         // eprintln!("Score: {}", score);
         let pos = rng.gen_range(0, n);
         let state = rng.gen_range(0, 8);
-        // 面積の差分
-        let area_diff = (input_data[pos].area - rects[pos].area())
-            .abs()
-            .sqrt()
-            .max(2);
-        let enl = rng.gen_range(1, area_diff);
-        rects[pos].transform(state, enl);
+        let enl = rng.gen_range(1, 100);
+        let mut rect = rects[pos].transform(state, enl);
+        std::mem::swap(&mut rect, &mut rects[pos]);
         let new_score = eval_score(input_data, &rects);
 
-        if new_score >= score {
+        if new_score > score {
+            // スコアが更新されている
             score = new_score;
         } else {
-            rects[pos].transform(state, -enl);
+            // 元に戻す
+            std::mem::swap(&mut rect, &mut rects[pos]);
+
+            // 動かしてみる
+            let state = rng.gen_range(0, 4);
+            let enl = rng.gen_range(1, 100);
+            let mut rect = rects[pos].slide(state, enl);
+            std::mem::swap(&mut rect, &mut rects[pos]);
+            let new_score = eval_score(input_data, &rects);
+            if new_score < score {
+                // スコアが変わった
+                std::mem::swap(&mut rect, &mut rects[pos]);
+            }
         }
 
         // スコア
         score_hist.push(score);
-
-        // visualize(&input_data, &rects, round);
+        // 可視化する
+        visualize(&input_data, &rects, round);
     }
 
     rects
@@ -256,7 +278,7 @@ fn generate_input(state: u64) -> Input {
 
 /// エントリーポイント
 /// 実行するときは、
-/// cat tools/in/0000.txt | cargo run --bin ahc001-a > tools/out/0000.txt
+/// cat tools/in/0000.txt | cargo run --release --bin ahc001-a > tools/out/0000.txt
 fn main() {
     // 標準入力
     let input_data = read_input();
@@ -282,7 +304,9 @@ fn main() {
 
 /// 可視化関連
 use svg::node::element::{path::Data, Path};
-const VERBOSE: usize = 10; // debug
+const VISUALIZE: bool = true;
+// const VISUALIZE: bool = false;
+const VERBOSE: usize = 25; // debug
 
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
@@ -307,6 +331,9 @@ fn fill_color(val: f64) -> String {
 
 #[allow(dead_code)]
 fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
+    if !VISUALIZE {
+        return;
+    }
     if round % VERBOSE != 0 {
         return;
     }
