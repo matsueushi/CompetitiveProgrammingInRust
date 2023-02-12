@@ -1,13 +1,10 @@
 use num_integer::Roots;
+use proconio::input;
 use rand::{thread_rng, Rng, SeedableRng};
 use std::collections::BTreeSet;
 
-use proconio::input;
-use svg::node::element::{path::Data, Path};
-
 const W: usize = 10000;
 const MAX_ITER: usize = 10000;
-const VERBOSE: usize = 10; // debug
 
 /// 点
 #[derive(Clone, Debug)]
@@ -179,10 +176,7 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         // スコア
         score_hist.push(score);
 
-        // 学習の履歴
-        if round % VERBOSE == 0 {
-            visualize(&input_data, &rects, round);
-        }
+        // visualize(&input_data, &rects, round);
     }
 
     rects
@@ -260,7 +254,36 @@ fn generate_input(state: u64) -> Input {
     sps
 }
 
+/// エントリーポイント
+/// 実行するときは、
+/// cat tools/in/0000.txt | cargo run --bin ahc001-a > tools/out/0000.txt
+fn main() {
+    // 標準入力
+    let input_data = read_input();
+
+    // 自動生成
+    // let input_data = generate_input(0);
+
+    let solution = find_arrangement(&input_data);
+    for Rect {
+        p0: Point { x: x0, y: y0 },
+        p1: Point { x: x1, y: y1 },
+    } in solution
+    {
+        println!("{} {} {} {}", x0, y0, x1, y1);
+    }
+}
+
+// fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {}
+
+///
+/// 下はデバッグ用
+///
+
 /// 可視化関連
+use svg::node::element::{path::Data, Path};
+const VERBOSE: usize = 10; // debug
+
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
     Data::new()
@@ -284,6 +307,10 @@ fn fill_color(val: f64) -> String {
 
 #[allow(dead_code)]
 fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
+    if round % VERBOSE != 0 {
+        return;
+    }
+
     let mut doc = svg::Document::new().set("viewBox", (0, 0, W, W));
     doc = doc.add(Path::new().set("fill", "white").set(
         "d",
@@ -353,24 +380,4 @@ fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
     }
     let save_path = format!("history/{:05}.svg", round);
     svg::save(save_path, &doc).unwrap();
-}
-
-/// エントリーポイント
-/// 実行するときは、
-/// cat tools/in/0000.txt | cargo run --bin ahc001-a > tools/out/0000.txt
-fn main() {
-    // 標準入力
-    let input_data = read_input();
-
-    // 自動生成
-    // let input_data = generate_input(0);
-
-    let solution = find_arrangement(&input_data);
-    for Rect {
-        p0: Point { x: x0, y: y0 },
-        p1: Point { x: x1, y: y1 },
-    } in solution
-    {
-        println!("{} {} {} {}", x0, y0, x1, y1);
-    }
 }
