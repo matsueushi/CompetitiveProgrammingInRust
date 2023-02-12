@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>アニメーション</title>
+</head>
+
+<script>
+    let max_count = 10000
+    let count = 0;
+    const animation = () => {
+        count = count + 10;
+        // カウントが最大になれば初期値に戻す
+        if (count == max_count) count = 0;
+        //画像選択
+        pic.src = "history/" + String(count).padStart(5, '0') + ".svg";
+        console.log(pic.src)
+        //1秒ごとに実行    
+        setTimeout(() => { animation(); }, 10);
+    }
+
+    window.onload = () => {
+        animation();
+    }
+
+</script>
+
+<body>
+    <div class="container mx-auto my-56 w-64 px-4">
+        <div id="sample" class="flex flex-col justify-center">
+            <img id="pic" class="object-contain w-full" src="history/00000.svg">
+        </div>
+    </div>
+</body>
+
+</html>

@@ -3,18 +3,25 @@ use rand::{thread_rng, Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 use proconio::input;
-// use svg::node::element::{path::Data, Path};
+use svg::node::element::{path::Data, Path};
 
 const W: usize = 10000;
-const MAX_ITER: usize = 2500;
-// const VERBOSE: usize = 0; // submission
-// const VERBOSE: usize = 10; // debug
+const MAX_ITER: usize = 10000;
+const VERBOSE: usize = 10; // debug
 
 /// 点
 #[derive(Clone, Debug)]
 struct Point {
     x: i64,
     y: i64,
+}
+
+impl Point {
+    /// 動かす
+    fn move_by(&mut self, dx: i64, dy: i64) {
+        self.x += dx;
+        self.y += dy;
+    }
 }
 
 /// 長方形
@@ -48,6 +55,27 @@ impl Rect {
     /// 点を含むか
     pub fn contains(&self, p: &Point) -> bool {
         self.p0.x <= p.x && p.x <= self.p1.x && self.p0.y <= p.y && p.y <= self.p1.y
+    }
+
+    /// 動かす
+    pub fn move_by(&mut self, dx0: i64, dy0: i64, dx1: i64, dy1: i64) {
+        self.p0.move_by(dx0, dy0);
+        self.p1.move_by(dx1, dy1);
+    }
+
+    /// 変換
+    pub fn transform(&mut self, i: usize, s: i64) {
+        match i {
+            0 => self.move_by(s, 0, 0, 0),
+            1 => self.move_by(0, s, 0, 0),
+            2 => self.move_by(0, 0, s, 0),
+            3 => self.move_by(0, 0, 0, s),
+            4 => self.move_by(-s, 0, 0, 0),
+            5 => self.move_by(0, -s, 0, 0),
+            6 => self.move_by(0, 0, -s, 0),
+            7 => self.move_by(0, 0, 0, -s),
+            _ => unreachable!(),
+        }
     }
 
     /// 中心
@@ -106,7 +134,7 @@ fn eval_score(input_data: &Input, rects: &Arrangement) -> i64 {
 fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut rects = Vec::new();
     // スコアの履歴
-    // let mut score_hist = Vec::new();
+    let mut score_hist = Vec::new();
 
     // 最初の解を探索する
     for Request {
@@ -129,12 +157,7 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut rng = thread_rng();
     let n = input_data.len();
 
-    let dx0 = [1, 0, -1, 0, 0, 0, 0, 0];
-    let dy0 = [0, 1, 0, -1, 0, 0, 0, 0];
-    let dx1 = [0, 0, 0, 0, 1, 0, -1, 0];
-    let dy1 = [0, 0, 0, 0, 0, 1, 0, -1];
-
-    for _ in 0..MAX_ITER {
+    for round in 0..MAX_ITER {
         // eprintln!("Score: {}", score);
         let pos = rng.gen_range(0, n);
         let state = rng.gen_range(0, 8);
@@ -144,26 +167,22 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
             .sqrt()
             .max(2);
         let enl = rng.gen_range(1, area_diff);
-        rects[pos].p0.x += dx0[state] * enl;
-        rects[pos].p0.y += dy0[state] * enl;
-        rects[pos].p1.x += dx1[state] * enl;
-        rects[pos].p1.y += dy1[state] * enl;
+        rects[pos].transform(state, enl);
         let new_score = eval_score(input_data, &rects);
 
         if new_score >= score {
             score = new_score;
         } else {
-            rects[pos].p0.x -= dx0[state] * enl;
-            rects[pos].p0.y -= dy0[state] * enl;
-            rects[pos].p1.x -= dx1[state] * enl;
-            rects[pos].p1.y -= dy1[state] * enl;
+            rects[pos].transform(state, -enl);
         }
 
+        // スコア
+        score_hist.push(score);
+
         // 学習の履歴
-        // if VERBOSE > 0 && round % VERBOSE == 0 {
-        //     score_hist.push(score);
-        //     visualize(&input_data, &rects, round);
-        // }
+        if round % VERBOSE == 0 {
+            visualize(&input_data, &rects, round);
+        }
     }
 
     rects
@@ -242,76 +261,99 @@ fn generate_input(state: u64) -> Input {
 }
 
 /// 可視化関連
-// #[allow(dead_code)]
-// fn rect(r: &Rect) -> Data {
-//     Data::new()
-//         .move_to((r.p0.x, r.p0.y))
-//         .line_by((r.p1.x - r.p0.x, 0))
-//         .line_by((0, r.p1.y - r.p0.y))
-//         .line_by((r.p0.x - r.p1.x, 0))
-//         .close()
-// }
+#[allow(dead_code)]
+fn rect(r: &Rect) -> Data {
+    Data::new()
+        .move_to((r.p0.x, r.p0.y))
+        .line_by((r.p1.x - r.p0.x, 0))
+        .line_by((0, r.p1.y - r.p0.y))
+        .line_by((r.p0.x - r.p1.x, 0))
+        .close()
+}
 
-// // 0 <= val <= 1
-// #[allow(dead_code)]
-// fn fill_color(val: f64) -> String {
-//     let tmp = ((-(2.0 * std::f64::consts::PI * val).cos() / 2.0 + 0.5) * 255.0) as i32;
-//     if val >= 0.5 {
-//         format!("#{:02x}{:02x}{:02x}", 255, 0, tmp)
-//     } else {
-//         format!("#{:02x}{:02x}{:02x}", tmp, 0, 255)
-//     }
-// }
+// 0 <= val <= 1
+#[allow(dead_code)]
+fn fill_color(val: f64) -> String {
+    let tmp = ((-(2.0 * std::f64::consts::PI * val).cos() / 2.0 + 0.5) * 255.0) as i32;
+    if val >= 0.5 {
+        format!("#{:02x}{:02x}{:02x}", 255, 0, tmp)
+    } else {
+        format!("#{:02x}{:02x}{:02x}", tmp, 0, 255)
+    }
+}
 
-// #[allow(dead_code)]
-// fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
-//     let mut doc = svg::Document::new().set("viewBox", (0, 0, W, W));
-//     doc = doc.add(Path::new().set("fill", "white").set(
-//         "d",
-//         rect(&Rect {
-//             p0: Point { x: 0, y: 0 },
-//             p1: Point {
-//                 x: W as i64,
-//                 y: W as i64,
-//             },
-//         }),
-//     ));
-//     let fontsize = 200.0 / (input_data.len() as f64 / 50.0).sqrt();
-//     for i in 0..input_data.len() {
-//         // rect
-//         let val = if rects[i].area() > input_data[i].area {
-//             1.0 - input_data[i].area as f64 / rects[i].area() as f64 / 2.0
-//         } else {
-//             rects[i].area() as f64 / input_data[i].area as f64 / 2.0
-//         };
-//         let path = Path::new()
-//             .set("fill", fill_color(val))
-//             .set("stroke", "black")
-//             .set("stroke-width", 5.0)
-//             .set("d", rect(&rects[i]));
-//         doc = doc.add(path);
-//         // id
-//         let center = rects[i].center();
-//         let text = svg::node::element::Text::new()
-//             .set("x", center.x as f64)
-//             .set("y", center.y as f64 + fontsize * 0.35)
-//             .set("font-size", fontsize)
-//             .set("text-anchor", "middle")
-//             .add(svg::node::Text::new(format!("{}", i)));
-//         doc = doc.add(text);
-//         // score
-//         let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
-//         let text = svg::node::element::Text::new()
-//             .set("x", center.x as f64 + fontsize * 0.7)
-//             .set("y", center.y as f64 + fontsize * 0.7)
-//             .set("font-size", fontsize * 0.5)
-//             .set("text-anchor", "middle")
-//             .add(svg::node::Text::new(format!("{:.3}", ti)));
-//         doc = doc.add(text);
-//     }
-//     let save_path = format!("history/{}.svg", round);
-//     svg::save(save_path, &doc).unwrap();
-// }
+#[allow(dead_code)]
+fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
+    let mut doc = svg::Document::new().set("viewBox", (0, 0, W, W));
+    doc = doc.add(Path::new().set("fill", "white").set(
+        "d",
+        rect(&Rect {
+            p0: Point { x: 0, y: 0 },
+            p1: Point {
+                x: W as i64,
+                y: W as i64,
+            },
+        }),
+    ));
+    let fontsize = 200.0 / (input_data.len() as f64 / 50.0).sqrt();
+    for i in 0..input_data.len() {
+        let px = input_data[i].p.x;
+        let py = input_data[i].p.y;
+
+        // rect
+        let val = if rects[i].area() > input_data[i].area {
+            1.0 - input_data[i].area as f64 / rects[i].area() as f64 / 2.0
+        } else {
+            rects[i].area() as f64 / input_data[i].area as f64 / 2.0
+        };
+        let path = Path::new()
+            .set("fill", fill_color(val))
+            .set("stroke", "black")
+            .set("stroke-width", 5.0)
+            .set("d", rect(&rects[i]));
+        doc = doc.add(path);
+        // id
+        let text = svg::node::element::Text::new()
+            .set("x", px as f64)
+            .set("y", py as f64 + fontsize * 0.35)
+            .set("font-size", fontsize)
+            .add(svg::node::Text::new(format!("{}", i)));
+        doc = doc.add(text);
+        // origin
+        let data = rect(&Rect {
+            p0: Point {
+                x: px - 30,
+                y: py - 30,
+            },
+            p1: Point {
+                x: px + 30,
+                y: py + 30,
+            },
+        });
+        let path = Path::new().set("fill", "green").set("d", data);
+        doc = doc.add(path);
+        // line
+        let center = rects[i].center();
+        let data = Data::new()
+            .move_to((px, py))
+            .line_by((center.x - px, center.y - py));
+        let path = Path::new()
+            .set("stroke", "black")
+            .set("stroke-width", 5.0)
+            .set("d", data);
+        doc = doc.add(path);
+        // score
+        let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
+        let text = svg::node::element::Text::new()
+            .set("x", px as f64 + fontsize * 0.7)
+            .set("y", py as f64 + fontsize * 0.7)
+            .set("font-size", fontsize * 0.5)
+            .add(svg::node::Text::new(format!("{:.3}", ti)));
+        doc = doc.add(text);
+    }
+    let save_path = format!("history/{:05}.svg", round);
+    svg::save(save_path, &doc).unwrap();
+}
 
 /// エントリーポイント
 /// 実行するときは、
