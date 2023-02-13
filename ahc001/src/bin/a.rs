@@ -296,7 +296,7 @@ fn main() {
     }
 }
 
-// fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {}
+// fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize, score: i64) {}
 
 ///
 /// 下はデバッグ用
@@ -304,8 +304,8 @@ fn main() {
 
 /// 可視化関連
 use svg::node::element::{path::Data, Path};
-const VERBOSE: Option<usize> = None;
-// const VERBOSE: Option<usize> = Some(25); // debug
+// const VERBOSE: Option<usize> = None;
+const VERBOSE: Option<usize> = Some(25); // debug
 
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
