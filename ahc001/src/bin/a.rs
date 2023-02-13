@@ -179,20 +179,17 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         std::mem::swap(&mut rect, &mut rects[pos]);
         let new_score = eval_score(input_data, &rects);
 
-        if new_score > score {
+        if new_score - score > 0 {
             // スコアが更新されている
             score = new_score;
         } else {
             // スコアが更新されていない
-            std::mem::swap(&mut rect, &mut rects[pos]);
-
             // 動かしてみる
             let state = rng.gen_range(0, 4);
             let enl = rng.gen_range(1, 50);
-            let mut rect = rects[pos].slide(state, enl);
-            std::mem::swap(&mut rect, &mut rects[pos]);
+            rects[pos] = rects[pos].slide(state, enl);
             let new_score = eval_score(input_data, &rects);
-            if new_score < score {
+            if new_score == 0 || new_score - score < -10000 {
                 // スコアが変わった
                 std::mem::swap(&mut rect, &mut rects[pos]);
             }
@@ -307,8 +304,8 @@ fn main() {
 
 /// 可視化関連
 use svg::node::element::{path::Data, Path};
-// const VERBOSE: Option<usize> = None;
-const VERBOSE: Option<usize> = Some(25); // debug
+const VERBOSE: Option<usize> = None;
+// const VERBOSE: Option<usize> = Some(25); // debug
 
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
@@ -376,7 +373,7 @@ fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize, score: i64) {
             .set("x", 200)
             .set("y", 200)
             .set("font-size", fontsize)
-            .add(svg::node::Text::new(format!("{}", score)));
+            .add(svg::node::Text::new(format!("{}, {}", round, score)));
         doc = doc.add(text);
         // id, score for ad
         let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
