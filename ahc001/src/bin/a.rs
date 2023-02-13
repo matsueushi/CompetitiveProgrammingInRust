@@ -1,5 +1,5 @@
 use proconio::input;
-use rand::{thread_rng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 const W: usize = 10000;
@@ -76,15 +76,15 @@ impl Rect {
     }
 
     /// スライドさせる
-    pub fn slide(&self, i: usize, s: i64) -> Self {
-        match i {
-            0 => self.extend(-s, 0, s, 0),
-            1 => self.extend(0, -s, 0, s),
-            2 => self.extend(s, 0, -s, 0),
-            3 => self.extend(0, s, 0, -s),
-            _ => unreachable!(),
-        }
-    }
+    // pub fn slide(&self, i: usize, s: i64) -> Self {
+    //     match i {
+    //         0 => self.extend(-s, 0, s, 0),
+    //         1 => self.extend(0, -s, 0, s),
+    //         2 => self.extend(s, 0, -s, 0),
+    //         3 => self.extend(0, s, 0, -s),
+    //         _ => unreachable!(),
+    //     }
+    // }
 
     /// 中心
     pub fn center(&self) -> Point {
@@ -164,14 +164,14 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         });
     }
     let mut score = eval_score(input_data, &rects);
-    let mut rng = thread_rng();
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
     let n = input_data.len();
 
     for round in 0..MAX_ITER {
-        // eprintln!("Score: {}", score);
         let pos = rng.gen_range(0, n);
         let state = rng.gen_range(0, 8);
         let enl = rng.gen_range(1, 100);
+
         let mut rect = rects[pos].transform(state, enl);
         std::mem::swap(&mut rect, &mut rects[pos]);
         let new_score = eval_score(input_data, &rects);
@@ -184,15 +184,15 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
             std::mem::swap(&mut rect, &mut rects[pos]);
 
             // 動かしてみる
-            let state = rng.gen_range(0, 4);
-            let enl = rng.gen_range(1, 100);
-            let mut rect = rects[pos].slide(state, enl);
-            std::mem::swap(&mut rect, &mut rects[pos]);
-            let new_score = eval_score(input_data, &rects);
-            if new_score < score {
-                // スコアが変わった
-                std::mem::swap(&mut rect, &mut rects[pos]);
-            }
+            // let state = rng.gen_range(0, 4);
+            // let enl = rng.gen_range(1, 100);
+            // let mut rect = rects[pos].slide(state, enl);
+            // std::mem::swap(&mut rect, &mut rects[pos]);
+            // let new_score = eval_score(input_data, &rects);
+            // if new_score < score {
+            //     // スコアが変わった
+            //     std::mem::swap(&mut rect, &mut rects[pos]);
+            // }
         }
 
         // スコア
@@ -304,9 +304,8 @@ fn main() {
 
 /// 可視化関連
 use svg::node::element::{path::Data, Path};
-const VISUALIZE: bool = true;
-// const VISUALIZE: bool = false;
-const VERBOSE: usize = 25; // debug
+// const VERBOSE: Option<usize> = None;
+const VERBOSE: Option<usize> = Some(25); // debug
 
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
@@ -331,11 +330,13 @@ fn fill_color(val: f64) -> String {
 
 #[allow(dead_code)]
 fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
-    if !VISUALIZE {
-        return;
-    }
-    if round % VERBOSE != 0 {
-        return;
+    match VERBOSE {
+        None => return,
+        Some(n) => {
+            if round % n != 0 {
+                return;
+            }
+        }
     }
 
     let mut doc = svg::Document::new().set("viewBox", (0, 0, W, W));
