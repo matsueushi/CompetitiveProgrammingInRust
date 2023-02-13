@@ -3,13 +3,29 @@ use rand::{Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 const W: usize = 10000;
-const MAX_ITER: usize = 25000;
+const MAX_ITER: usize = 50000;
+const ROUND_BREAK: usize = 1000;
 
 /// 点
 #[derive(Clone, Debug)]
 struct Point {
     x: i64,
     y: i64,
+}
+
+impl Point {
+    fn initial_rect(&self) -> Rect {
+        Rect {
+            p0: Self {
+                x: self.x,
+                y: self.y,
+            },
+            p1: Self {
+                x: self.x + 1,
+                y: self.y + 1,
+            },
+        }
+    }
 }
 
 /// 長方形
@@ -147,28 +163,23 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut score_hist = Vec::new();
 
     // 最初の解を探索する
-    for Request {
-        p: Point { x, y },
-        area: _,
-    } in input_data
-    {
-        rects.push(Rect {
-            p0: Point {
-                x: *x as i64,
-                y: *y as i64,
-            },
-            p1: Point {
-                x: (*x + 1) as i64,
-                y: (*y + 1) as i64,
-            },
-        });
+    for rect in input_data {
+        rects.push(rect.p.initial_rect());
     }
     let mut score = eval_score(input_data, &rects);
     let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
     let n = input_data.len();
 
+    let mut failed = 0;
     for round in 0..MAX_ITER {
         let pos = rng.gen_range(0, n);
+
+        // ランダムに破壊する
+        if round % ROUND_BREAK == 0 {
+            // rects[pos] = input_data[pos].p.initial_rect();
+            // score = eval_score(input_data, &rects);
+        }
+
         let state = rng.gen_range(0, 8);
         let enl = rng.gen_range(1, 100);
 
@@ -179,9 +190,13 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         if new_score > score {
             // スコアが更新されている
             score = new_score;
+            failed = 0;
         } else {
-            // 元に戻す
+            // スコアが更新されていない
             std::mem::swap(&mut rect, &mut rects[pos]);
+            failed += 1;
+
+            // 元に戻す
 
             // 動かしてみる
             // let state = rng.gen_range(0, 4);
@@ -198,7 +213,7 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         // スコア
         score_hist.push(score);
         // 可視化する
-        visualize(&input_data, &rects, round);
+        visualize(&input_data, &rects, round, score);
     }
 
     rects
@@ -329,7 +344,7 @@ fn fill_color(val: f64) -> String {
 }
 
 #[allow(dead_code)]
-fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
+fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize, score: i64) {
     match VERBOSE {
         None => return,
         Some(n) => {
@@ -367,12 +382,21 @@ fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
             .set("stroke-width", 5.0)
             .set("d", rect(&rects[i]));
         doc = doc.add(path);
-        // id
+        // failed
+        let text = svg::node::element::Text::new()
+            .set("stroke", "blue")
+            .set("x", 200)
+            .set("y", 200)
+            .set("font-size", fontsize)
+            .add(svg::node::Text::new(format!("{}", score)));
+        doc = doc.add(text);
+        // id, score for ad
+        let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
         let text = svg::node::element::Text::new()
             .set("x", px as f64)
             .set("y", py as f64 + fontsize * 0.35)
             .set("font-size", fontsize)
-            .add(svg::node::Text::new(format!("{}", i)));
+            .add(svg::node::Text::new(format!("{}: {:.3}", i, ti)));
         doc = doc.add(text);
         // origin
         let data = rect(&Rect {
@@ -397,14 +421,6 @@ fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize) {
             .set("stroke-width", 5.0)
             .set("d", data);
         doc = doc.add(path);
-        // score
-        let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
-        let text = svg::node::element::Text::new()
-            .set("x", px as f64 + fontsize * 0.7)
-            .set("y", py as f64 + fontsize * 0.7)
-            .set("font-size", fontsize * 0.5)
-            .add(svg::node::Text::new(format!("{:.3}", ti)));
-        doc = doc.add(text);
     }
     let save_path = format!("history/{:05}.svg", round);
     svg::save(save_path, &doc).unwrap();
