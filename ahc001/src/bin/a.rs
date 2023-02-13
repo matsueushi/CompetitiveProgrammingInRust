@@ -4,7 +4,6 @@ use std::collections::BTreeSet;
 
 const W: usize = 10000;
 const MAX_ITER: usize = 50000;
-const ROUND_BREAK: usize = 1000;
 
 /// 点
 #[derive(Clone, Debug)]
@@ -92,15 +91,15 @@ impl Rect {
     }
 
     /// スライドさせる
-    // pub fn slide(&self, i: usize, s: i64) -> Self {
-    //     match i {
-    //         0 => self.extend(-s, 0, s, 0),
-    //         1 => self.extend(0, -s, 0, s),
-    //         2 => self.extend(s, 0, -s, 0),
-    //         3 => self.extend(0, s, 0, -s),
-    //         _ => unreachable!(),
-    //     }
-    // }
+    pub fn slide(&self, i: usize, s: i64) -> Self {
+        match i {
+            0 => self.extend(-s, 0, s, 0),
+            1 => self.extend(0, -s, 0, s),
+            2 => self.extend(s, 0, -s, 0),
+            3 => self.extend(0, s, 0, -s),
+            _ => unreachable!(),
+        }
+    }
 
     /// 中心
     pub fn center(&self) -> Point {
@@ -170,18 +169,11 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
     let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
     let n = input_data.len();
 
-    let mut failed = 0;
     for round in 0..MAX_ITER {
         let pos = rng.gen_range(0, n);
 
-        // ランダムに破壊する
-        if round % ROUND_BREAK == 0 {
-            // rects[pos] = input_data[pos].p.initial_rect();
-            // score = eval_score(input_data, &rects);
-        }
-
         let state = rng.gen_range(0, 8);
-        let enl = rng.gen_range(1, 100);
+        let enl = rng.gen_range(1, 50);
 
         let mut rect = rects[pos].transform(state, enl);
         std::mem::swap(&mut rect, &mut rects[pos]);
@@ -190,24 +182,20 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         if new_score > score {
             // スコアが更新されている
             score = new_score;
-            failed = 0;
         } else {
             // スコアが更新されていない
             std::mem::swap(&mut rect, &mut rects[pos]);
-            failed += 1;
-
-            // 元に戻す
 
             // 動かしてみる
-            // let state = rng.gen_range(0, 4);
-            // let enl = rng.gen_range(1, 100);
-            // let mut rect = rects[pos].slide(state, enl);
-            // std::mem::swap(&mut rect, &mut rects[pos]);
-            // let new_score = eval_score(input_data, &rects);
-            // if new_score < score {
-            //     // スコアが変わった
-            //     std::mem::swap(&mut rect, &mut rects[pos]);
-            // }
+            let state = rng.gen_range(0, 4);
+            let enl = rng.gen_range(1, 50);
+            let mut rect = rects[pos].slide(state, enl);
+            std::mem::swap(&mut rect, &mut rects[pos]);
+            let new_score = eval_score(input_data, &rects);
+            if new_score < score {
+                // スコアが変わった
+                std::mem::swap(&mut rect, &mut rects[pos]);
+            }
         }
 
         // スコア
