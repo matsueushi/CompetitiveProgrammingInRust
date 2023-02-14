@@ -120,39 +120,75 @@ fn area_fill_ratio(r: i64, s: i64) -> f64 {
     r.min(s) / r.max(s)
 }
 
-/// スコアを計算する
-fn eval_score(input_data: &Input, rects: &Arrangement) -> i64 {
-    let n = input_data.len();
-    let mut score = 0.0;
-    for i in 0..n {
-        if rects[i].out_of_range() {
+struct ScoreCalculator {
+    rect_scores: Vec<f64>,
+    raw_score: f64,
+}
+
+impl ScoreCalculator {
+    fn new(input_data: &Input) -> Self {
+        let mut rect_scores = Vec::new();
+        for r in input_data {
+            let t = area_fill_ratio(1, r.area);
+            let s = 1.0 - (1.0 - t) * (1.0 - t);
+            rect_scores.push(s);
+        }
+        let raw_score = rect_scores.iter().sum();
+        Self {
+            rect_scores,
+            raw_score,
+        }
+    }
+
+    fn score(&self) -> i64 {
+        (1e9 * self.raw_score / self.rect_scores.len() as f64).round() as i64
+    }
+
+    fn update(
+        &mut self,
+        input_data: &Input,
+        rects: &Arrangement,
+        i: usize,
+        rect: &Rect,
+        threshold: f64,
+    ) -> Result<f64, f64> {
+        if rect.out_of_range() {
             // out of range
             // eprintln!("out of range: {}", i);
-            return 0;
+            return Err(self.raw_score);
         }
-        if !rects[i].is_valid() {
+        if !rect.is_valid() {
             // negative area
             // eprintln!("negative area: {}", i);
-            return 0;
+            return Err(self.raw_score);
         }
-        if !rects[i].contains(&input_data[i].p) {
+        if !rect.contains(&input_data[i].p) {
             // 点を含まない場合はスコアには関与しない
             // eprintln!("point is not included: {}", i);
             // スコアに関与しないが、ペナルティとして0にしてしまう
-            return 0;
+            return Err(self.raw_score);
         }
-        for j in 0..i {
-            if rects[i].intersect(&rects[j]) {
+        for j in 0..rects.len() {
+            if i == j {
+                continue;
+            }
+            if rect.intersect(&rects[j]) {
                 // オーバーラップしているものがある
                 // eprintln!("overlap: {} {}", i, j);
-                return 0;
+                return Err(self.raw_score);
             }
         }
 
-        let ti = area_fill_ratio(rects[i].area(), input_data[i].area);
-        score += 1.0 - (1.0 - ti) * (1.0 - ti);
+        let t = area_fill_ratio(rect.area(), input_data[i].area);
+        let s = 1.0 - (1.0 - t) * (1.0 - t);
+        if self.rect_scores[i] - s > threshold {
+            return Err(self.raw_score);
+        }
+
+        self.rect_scores[i] = s;
+        self.raw_score = self.rect_scores.iter().sum();
+        Ok(self.raw_score)
     }
-    (1e9 * score / n as f64).round() as i64
 }
 
 /// 解を捜索する
@@ -165,7 +201,7 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
     for rect in input_data {
         rects.push(rect.p.initial_rect());
     }
-    let mut score = eval_score(input_data, &rects);
+    let mut score_calculator = ScoreCalculator::new(input_data);
     let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
     let n = input_data.len();
 
@@ -173,32 +209,29 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         let pos = rng.gen_range(0, n);
 
         let state = rng.gen_range(0, 8);
-        let enl = rng.gen_range(1, 50);
+        let enl = rng.gen_range(1, 100);
 
-        let mut rect = rects[pos].transform(state, enl);
-        std::mem::swap(&mut rect, &mut rects[pos]);
-        let new_score = eval_score(input_data, &rects);
-
-        if new_score - score > 0 {
-            // スコアが更新されている
-            score = new_score;
+        let rect = rects[pos].transform(state, enl);
+        let ret = score_calculator.update(input_data, &rects, pos, &rect, 0.0);
+        if ret.is_ok() {
+            rects[pos] = rect;
         } else {
             // スコアが更新されていない
             // 動かしてみる
             let state = rng.gen_range(0, 4);
-            let enl = rng.gen_range(1, 50);
-            rects[pos] = rects[pos].slide(state, enl);
-            let new_score = eval_score(input_data, &rects);
-            if new_score == 0 || new_score - score < -10000 {
+            let enl = rng.gen_range(1, 100);
+            let rect = rects[pos].slide(state, enl);
+            let ret2 = score_calculator.update(input_data, &rects, pos, &rect, 0.01);
+            if ret2.is_ok() {
                 // スコアが変わった
-                std::mem::swap(&mut rect, &mut rects[pos]);
+                rects[pos] = rect;
             }
         }
 
         // スコア
-        score_hist.push(score);
+        score_hist.push(score_calculator.score());
         // 可視化する
-        visualize(&input_data, &rects, round, score);
+        // visualize(&input_data, &rects, round, score_calculator.score());
     }
 
     rects
