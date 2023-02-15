@@ -3,7 +3,7 @@ use rand::{Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 const W: usize = 10000;
-const MAX_ITER: usize = 50000;
+const MAX_ITER: usize = 100000;
 
 /// 点
 #[derive(Clone, Debug)]
@@ -82,21 +82,10 @@ impl Rect {
             1 => self.extend(0, s, 0, 0),
             2 => self.extend(0, 0, s, 0),
             3 => self.extend(0, 0, 0, s),
-            4 => self.extend(-s, 0, 0, 0),
-            5 => self.extend(0, -s, 0, 0),
-            6 => self.extend(0, 0, -s, 0),
-            7 => self.extend(0, 0, 0, -s),
-            _ => unreachable!(),
-        }
-    }
-
-    /// スライドさせる
-    pub fn slide(&self, i: usize, s: i64) -> Self {
-        match i {
-            0 => self.extend(-s, 0, s, 0),
-            1 => self.extend(0, -s, 0, s),
-            2 => self.extend(s, 0, -s, 0),
-            3 => self.extend(0, s, 0, -s),
+            4 => self.extend(s, 0, s, 0),
+            5 => self.extend(0, s, 0, s),
+            6 => self.extend(s, 0, -s, 0),
+            7 => self.extend(0, s, 0, -s),
             _ => unreachable!(),
         }
     }
@@ -209,23 +198,12 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         let pos = rng.gen_range(0, n);
 
         let state = rng.gen_range(0, 8);
-        let enl = rng.gen_range(1, 100);
+        let enl = rng.gen_range(-100, 100);
 
         let rect = rects[pos].transform(state, enl);
-        let ret = score_calculator.update(input_data, &rects, pos, &rect, 0.0);
+        let ret = score_calculator.update(input_data, &rects, pos, &rect, 0.001);
         if ret.is_ok() {
             rects[pos] = rect;
-        } else {
-            // スコアが更新されていない
-            // 動かしてみる
-            let state = rng.gen_range(0, 4);
-            let enl = rng.gen_range(1, 100);
-            let rect = rects[pos].slide(state, enl);
-            let ret2 = score_calculator.update(input_data, &rects, pos, &rect, 0.01);
-            if ret2.is_ok() {
-                // スコアが変わった
-                rects[pos] = rect;
-            }
         }
 
         // スコア
@@ -338,7 +316,7 @@ fn main() {
 /// 可視化関連
 use svg::node::element::{path::Data, Path};
 // const VERBOSE: Option<usize> = None;
-const VERBOSE: Option<usize> = Some(25); // debug
+const VERBOSE: Option<usize> = Some(50); // debug
 
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
