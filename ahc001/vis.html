@@ -7,16 +7,16 @@
 </head>
 
 <script>
-    let max_count = 100000
+    let max_count = 1000000
     let count = 0;
     const animation = () => {
-        count = count + 50;
+        count = count + 1000;
         // カウントが最大になれば初期値に戻す
         if (count == max_count) count = 0;
         //画像選択
         pic.src = "history/" + String(count).padStart(5, '0') + ".svg";
         console.log(pic.src)
-        setTimeout(() => { animation(); }, 5);
+        setTimeout(() => { animation(); }, 10);
     }
 
     window.onload = () => {

@@ -3,7 +3,7 @@ use rand::{Rng, SeedableRng};
 use std::collections::BTreeSet;
 
 const W: usize = 10000;
-const MAX_ITER: usize = 100000;
+const MAX_ITER: usize = 1_000_000;
 
 /// 点
 #[derive(Clone, Debug)]
@@ -209,7 +209,7 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         // スコア
         score_hist.push(score_calculator.score());
         // 可視化する
-        // visualize(&input_data, &rects, round, score_calculator.score());
+        visualize(&input_data, &rects, round, score_calculator.score());
     }
 
     rects
@@ -316,7 +316,7 @@ fn main() {
 /// 可視化関連
 use svg::node::element::{path::Data, Path};
 // const VERBOSE: Option<usize> = None;
-const VERBOSE: Option<usize> = Some(50); // debug
+const VERBOSE: Option<usize> = Some(1000); // debug
 
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
