@@ -307,17 +307,21 @@ fn main() {
     }
 }
 
-// fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize, score: i64) {}
+#[cfg(not(feature = "local"))]
+fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize, score: i64) {}
 
 ///
 /// 下はデバッグ用
 ///
 
 /// 可視化関連
+#[cfg(feature = "local")]
 use svg::node::element::{path::Data, Path};
+#[cfg(feature = "local")]
 // const VERBOSE: Option<usize> = None;
 const VERBOSE: Option<usize> = Some(1000); // debug
 
+#[cfg(feature = "local")]
 #[allow(dead_code)]
 fn rect(r: &Rect) -> Data {
     Data::new()
@@ -329,6 +333,7 @@ fn rect(r: &Rect) -> Data {
 }
 
 // 0 <= val <= 1
+#[cfg(feature = "local")]
 #[allow(dead_code)]
 fn fill_color(val: f64) -> String {
     let tmp = ((-(2.0 * std::f64::consts::PI * val).cos() / 2.0 + 0.5) * 255.0) as i32;
@@ -339,6 +344,7 @@ fn fill_color(val: f64) -> String {
     }
 }
 
+#[cfg(feature = "local")]
 #[allow(dead_code)]
 fn visualize(input_data: &Input, rects: &Vec<Rect>, round: usize, score: i64) {
     match VERBOSE {

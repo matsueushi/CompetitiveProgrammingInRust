@@ -53,3 +53,7 @@ smallvec = "=1.2.0"
 svg = "0.13.0"
 
 [dev-dependencies]
+
+[features]
+default = ["local"]
+local = []
