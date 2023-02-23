@@ -201,7 +201,9 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         let enl = rng.gen_range(-100, 100);
 
         let rect = rects[pos].transform(state, enl);
-        let ret = score_calculator.update(input_data, &rects, pos, &rect, 0.001);
+
+        let t = (-10.0 * (round as f64) / MAX_ITER as f64).exp().min(0.01);
+        let ret = score_calculator.update(input_data, &rects, pos, &rect, t);
         if ret.is_ok() {
             rects[pos] = rect;
         }
@@ -209,7 +211,7 @@ fn find_arrangement(input_data: &Input) -> Arrangement {
         // スコア
         score_hist.push(score_calculator.score());
         // 可視化する
-        visualize(&input_data, &rects, round, score_calculator.score());
+        // visualize(&input_data, &rects, round, score_calculator.score());
     }
 
     rects
