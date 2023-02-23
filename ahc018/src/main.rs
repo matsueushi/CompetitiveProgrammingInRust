@@ -1,8 +1,6 @@
-use proconio::{input, source::line::LineSource};
-use std::{
-    io::{BufReader, Stdin},
-    process,
-};
+use proconio::input;
+use std::process;
+use text_io::read;
 
 #[derive(Clone, Copy)]
 struct Pos {
@@ -34,21 +32,11 @@ impl Field {
         }
     }
 
-    pub fn query(
-        &mut self,
-        y: usize,
-        x: usize,
-        power: usize,
-        mut source: &mut LineSource<BufReader<Stdin>>,
-    ) -> Response {
+    pub fn query(&mut self, y: usize, x: usize, power: usize) -> Response {
         self.total_cost += power + self.c;
         println!("{} {} {}", y, x, power);
 
-        input! {
-            from &mut source,
-            r: i64,
-        }
-
+        let r: i32 = read!();
         // println!("# responce:{}", r);
 
         match r {
@@ -72,21 +60,16 @@ struct Solver {
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
-    source: LineSource<BufReader<Stdin>>,
 }
 
 impl Solver {
     pub fn new(n: usize, source_pos: Vec<Pos>, house_pos: Vec<Pos>, c: usize) -> Self {
-        let stdin = std::io::stdin();
-        let source = LineSource::new(BufReader::new(stdin));
-
         Self {
             n,
             c,
             source_pos,
             house_pos,
             field: Field::new(n, c),
-            source,
         }
     }
 
@@ -126,7 +109,7 @@ impl Solver {
     pub fn destruct(&mut self, y: usize, x: usize) {
         const POWER: usize = 100;
         while !self.field.is_broken[y][x] {
-            let result = self.field.query(y, x, POWER, &mut self.source);
+            let result = self.field.query(y, x, POWER);
             match result {
                 Response::Finish => {
                     // eprintln!("total_cost={}", self.field.total_cost);
