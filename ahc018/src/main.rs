@@ -1,4 +1,5 @@
-use proconio::input;
+use proconio::{input, source::line::LineSource};
+use std::io::BufReader;
 use std::process;
 use text_io::read;
 
@@ -126,7 +127,11 @@ impl Solver {
 }
 
 fn main() {
+    let stdin = std::io::stdin();
+    let mut source = LineSource::new(BufReader::new(stdin));
+
     input! {
+        from &mut source,
         n: usize,
         w: usize,
         k: usize,
