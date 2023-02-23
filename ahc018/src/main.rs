@@ -49,7 +49,7 @@ impl Field {
             r: i64,
         }
 
-        println!("# responce:{}", r);
+        // println!("# responce:{}", r);
 
         match r {
             0 => Response::NotBroken,
@@ -129,11 +129,11 @@ impl Solver {
             let result = self.field.query(y, x, POWER, &mut self.source);
             match result {
                 Response::Finish => {
-                    eprintln!("total_cost={}", self.field.total_cost);
+                    // eprintln!("total_cost={}", self.field.total_cost);
                     process::exit(0);
                 }
                 Response::InValid => {
-                    eprintln!("invalid: y={}, x={}", y, x);
+                    // eprintln!("invalid: y={}, x={}", y, x);
                     process::exit(1);
                 }
                 _ => {}
