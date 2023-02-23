@@ -82,6 +82,7 @@ enum Response {
     InValid,
 }
 
+#[allow(unused)]
 struct Field {
     n: usize,
     c: usize,
@@ -121,6 +122,7 @@ impl Field {
     }
 }
 
+#[allow(unused)]
 struct Solver {
     n: usize,
     c: usize,
@@ -214,7 +216,11 @@ impl Solver {
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) {
+    pub fn destruct(&mut self, y: usize, x: usize) -> bool {
+        if self.field.is_broken[y][x] {
+            // すでに壊れていたらスキップ
+            return false;
+        }
         const POWER: usize = 100;
         while !self.field.is_broken[y][x] {
             let result = self.field.query(y, x, POWER);
@@ -230,6 +236,7 @@ impl Solver {
                 _ => {}
             }
         }
+        true
     }
 }
 
