@@ -201,6 +201,11 @@ impl Solver {
             "# move from ({}, {}) to {} {}",
             start.y, start.x, goal.y, goal.x
         );
+        // スタートからゴールまでの角度
+        let dy_orig = abs_diff(start.y, goal.y) as f64;
+        let dx_orig = abs_diff(start.x, goal.x) as f64;
+        let rad_orig = dy_orig.atan2(dx_orig);
+
         let mut hist = Vec::new();
         let mut cur_y = start.y;
         let mut cur_x = start.x;
@@ -235,7 +240,11 @@ impl Solver {
                             toward(&mut cur_y, goal.y);
                         }
                     } else {
-                        if dy > dx {
+                        let dy_start = abs_diff(start.y, cur_y) as f64;
+                        let dx_start = abs_diff(start.x, cur_x) as f64;
+                        let rad = dy_start.atan2(dx_start);
+
+                        if rad < rad_orig {
                             toward(&mut cur_y, goal.y);
                         } else {
                             toward(&mut cur_x, goal.x);
