@@ -125,39 +125,57 @@ impl Field {
 #[allow(unused)]
 struct Solver {
     n: usize,
+    w: usize,
+    k: usize,
     c: usize,
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
+    uf: UnionFind,
 }
 
 impl Solver {
-    pub fn new(n: usize, source_pos: Vec<Pos>, house_pos: Vec<Pos>, c: usize) -> Self {
+    pub fn new(
+        n: usize,
+        w: usize,
+        k: usize,
+        c: usize,
+        source_pos: Vec<Pos>,
+        house_pos: Vec<Pos>,
+    ) -> Self {
         Self {
             n,
+            w,
+            k,
             c,
             source_pos,
             house_pos,
             field: Field::new(n, c),
+            uf: UnionFind::new(k + 1),
         }
     }
 
-    pub fn solve(&mut self) {
-        let hl = self.house_pos.len();
-        let mut uf = UnionFind::new(hl + 1);
+    pub fn all_connected(&mut self) -> bool {
+        self.uf.group_size(self.k) == self.k + 1
+    }
 
-        while uf.group_size(hl) != hl + 1 {
-            for i in 0..hl {
+    pub fn connected(&mut self, i: usize) -> bool {
+        self.uf.in_same_set(i, self.k)
+    }
+
+    pub fn solve(&mut self) {
+        while !self.all_connected() {
+            for i in 0..self.k {
                 // すでに水源に接続されている
-                if uf.in_same_set(i, hl) {
+                if self.connected(i) {
                     continue;
                 }
 
                 // 接続されていない
                 let mut hidx = 0;
                 let mut hdist = std::usize::MAX;
-                for j in 0..hl {
-                    if uf.in_same_set(i, j) {
+                for j in 0..self.k {
+                    if self.uf.in_same_set(i, j) {
                         continue;
                     }
                     let d = self.house_pos[i].dist(&self.house_pos[j]);
@@ -169,7 +187,7 @@ impl Solver {
 
                 let mut sidx = 0;
                 let mut sdist = std::usize::MAX;
-                for j in 0..self.source_pos.len() {
+                for j in 0..self.w {
                     let d = self.house_pos[i].dist(&self.source_pos[j]);
                     if d < sdist {
                         sdist = d;
@@ -180,10 +198,10 @@ impl Solver {
                 if sdist < hdist {
                     // 水源に繋いだ方が近い
                     self.mov(self.house_pos[i], self.source_pos[sidx]);
-                    uf.union(i, hl);
+                    self.uf.union(i, self.k);
                 } else {
                     self.mov(self.house_pos[i], self.house_pos[hidx]);
-                    uf.union(i, hidx);
+                    self.uf.union(i, hidx);
                 }
             }
         }
@@ -216,11 +234,7 @@ impl Solver {
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) -> bool {
-        if self.field.is_broken[y][x] {
-            // すでに壊れていたらスキップ
-            return false;
-        }
+    pub fn destruct(&mut self, y: usize, x: usize) {
         const POWER: usize = 100;
         while !self.field.is_broken[y][x] {
             let result = self.field.query(y, x, POWER);
@@ -236,7 +250,6 @@ impl Solver {
                 _ => {}
             }
         }
-        true
     }
 }
 
@@ -263,7 +276,7 @@ fn main() {
         house_pos.push(Pos { y: c, x: d });
     }
 
-    let mut solver = Solver::new(n, source_pos, house_pos, c);
+    let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
     solver.solve();
 }
 

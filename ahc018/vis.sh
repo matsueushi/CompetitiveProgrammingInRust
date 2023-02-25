@@ -1,7 +1,7 @@
 cd tools
 touch score.txt
 cat /dev/null > score.txt
-for i in $(seq -f '%04g' 0 10)
+for i in $(seq -f '%04g' 0 99)
 do
     cargo run --release --bin vis in/${i}.txt out/${i}.txt png/${i}.png >> score.txt
 done
