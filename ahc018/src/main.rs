@@ -194,37 +194,58 @@ impl Solver {
         }
     }
 
-    pub fn mov_y(&mut self, start_y: usize, start_x: usize, goal_y: usize) {
-        if start_y < goal_y {
-            for y in start_y..=goal_y {
-                self.destruct(y, start_x);
-            }
-        } else {
-            for y in (goal_y..=start_y).rev() {
-                self.destruct(y, start_x)
-            }
-        }
-    }
+    // pub fn mov_y(&mut self, start_y: usize, start_x: usize, goal_y: usize) {
+    //     if start_y < goal_y {
+    //         for y in start_y..=goal_y {
+    //             self.destruct(y, start_x);
+    //         }
+    //     } else {
+    //         for y in (goal_y..=start_y).rev() {
+    //             self.destruct(y, start_x);
+    //         }
+    //     }
+    // }
 
-    pub fn mov_x(&mut self, start_y: usize, start_x: usize, goal_x: usize) {
-        if start_x < goal_x {
-            for x in start_x..=goal_x {
-                self.destruct(start_y, x);
-            }
-        } else {
-            for x in (goal_x..=start_x).rev() {
-                self.destruct(start_y, x);
-            }
-        }
-    }
+    // pub fn mov_x(&mut self, start_y: usize, start_x: usize, goal_x: usize) {
+    //     if start_x < goal_x {
+    //         for x in start_x..=goal_x {
+    //             self.destruct(start_y, x);
+    //         }
+    //     } else {
+    //         for x in (goal_x..=start_x).rev() {
+    //             self.destruct(start_y, x);
+    //         }
+    //     }
+    // }
 
     pub fn mov(&mut self, start: Pos, goal: Pos) {
         println!(
             "# move from ({}, {}) to {} {}",
             start.y, start.x, goal.y, goal.x
         );
-        self.mov_y(start.y, start.x, goal.y);
-        self.mov_x(goal.y, start.x, goal.x);
+        let mut cur_y = start.y;
+        let mut cur_x = start.x;
+        self.destruct(cur_y, cur_x);
+        while cur_y != goal.y || cur_x != goal.x {
+            let dy = abs_diff(cur_y, goal.y);
+            let dx = abs_diff(cur_x, goal.x);
+            if dy > dx {
+                // y 方向に動かす
+                if cur_y < goal.y {
+                    cur_y += 1;
+                } else {
+                    cur_y -= 1;
+                }
+            } else {
+                // x 方向に動かす
+                if cur_x < goal.x {
+                    cur_x += 1;
+                } else {
+                    cur_x -= 1;
+                }
+            }
+            self.destruct(cur_y, cur_x);
+        }
     }
 
     pub fn destruct(&mut self, y: usize, x: usize) {
