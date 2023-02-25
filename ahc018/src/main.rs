@@ -87,6 +87,7 @@ struct Field {
     n: usize,
     c: usize,
     is_broken: Vec<Vec<bool>>,
+    cost: Vec<Vec<usize>>,
     total_cost: usize,
 }
 
@@ -96,16 +97,17 @@ impl Field {
             n,
             c,
             is_broken: vec![vec![false; n]; n],
+            cost: vec![vec![0; n]; n],
             total_cost: 0,
         }
     }
 
     pub fn query(&mut self, y: usize, x: usize, power: usize) -> Response {
         self.total_cost += power + self.c;
+        self.cost[y][x] += power + self.c;
         println!("{} {} {}", y, x, power);
 
         let r: i32 = read!();
-        // println!("# responce:{}", r);
 
         match r {
             0 => Response::NotBroken,
@@ -194,61 +196,48 @@ impl Solver {
         }
     }
 
-    // pub fn mov_y(&mut self, start_y: usize, start_x: usize, goal_y: usize) {
-    //     if start_y < goal_y {
-    //         for y in start_y..=goal_y {
-    //             self.destruct(y, start_x);
-    //         }
-    //     } else {
-    //         for y in (goal_y..=start_y).rev() {
-    //             self.destruct(y, start_x);
-    //         }
-    //     }
-    // }
-
-    // pub fn mov_x(&mut self, start_y: usize, start_x: usize, goal_x: usize) {
-    //     if start_x < goal_x {
-    //         for x in start_x..=goal_x {
-    //             self.destruct(start_y, x);
-    //         }
-    //     } else {
-    //         for x in (goal_x..=start_x).rev() {
-    //             self.destruct(start_y, x);
-    //         }
-    //     }
-    // }
-
     pub fn mov(&mut self, start: Pos, goal: Pos) {
         println!(
             "# move from ({}, {}) to {} {}",
             start.y, start.x, goal.y, goal.x
         );
+        let mut hist = Vec::new();
         let mut cur_y = start.y;
         let mut cur_x = start.x;
         self.destruct(cur_y, cur_x);
+        hist.push((cur_y, cur_x));
         while cur_y != goal.y || cur_x != goal.x {
             let dy = abs_diff(cur_y, goal.y);
             let dx = abs_diff(cur_x, goal.x);
-            if dy > dx {
+            if dx == 0 {
                 // y 方向に動かす
-                if cur_y < goal.y {
-                    cur_y += 1;
-                } else {
-                    cur_y -= 1;
-                }
-            } else {
+                toward(&mut cur_y, goal.y);
+            } else if dy == 0 {
                 // x 方向に動かす
-                if cur_x < goal.x {
-                    cur_x += 1;
+                toward(&mut cur_x, goal.x);
+            } else {
+                if hist.len() == 1 {
+                    if dy > dx {
+                        toward(&mut cur_y, goal.y);
+                    } else {
+                        toward(&mut cur_x, goal.x);
+                    }
                 } else {
-                    cur_x -= 1;
+                    // ここで勾配を計算したい
+                    if dy > dx {
+                        toward(&mut cur_y, goal.y);
+                    } else {
+                        toward(&mut cur_x, goal.x);
+                    }
                 }
             }
+            // コストを計算
             self.destruct(cur_y, cur_x);
+            hist.push((cur_y, cur_x));
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) {
+    pub fn destruct(&mut self, y: usize, x: usize) -> usize {
         const POWER: usize = 100;
         while !self.field.is_broken[y][x] {
             let result = self.field.query(y, x, POWER);
@@ -264,6 +253,15 @@ impl Solver {
                 _ => {}
             }
         }
+        return self.field.cost[y][x];
+    }
+}
+
+pub fn toward(v: &mut usize, nv: usize) {
+    if *v < nv {
+        *v += 1;
+    } else {
+        *v -= 1;
     }
 }
 

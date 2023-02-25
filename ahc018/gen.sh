@@ -1,4 +1,4 @@
-for i in $(seq -f '%04g' 99)
+for i in $(seq -f '%04g' 0 10)
 do
     echo ${i}
     cat tools/in/${i}.txt | ../target/release/tester cargo run --release --bin ahc018 > tools/out/${i}.txt
