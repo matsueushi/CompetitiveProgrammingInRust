@@ -1,64 +1,19 @@
+use petgraph::unionfind::UnionFind;
 use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
 use text_io::read;
 
-#[derive(Debug, Clone)]
-pub struct UnionFind {
-    par: Vec<usize>,
-    size: Vec<usize>,
-}
-
-impl UnionFind {
-    /// 大きさ `n` の Union-Find 木を初期化する。
-    pub fn new(n: usize) -> Self {
-        Self {
-            par: vec![0; n],
-            size: vec![1; n],
-        }
-    }
-
-    /// 頂点 `a` の属する連結成分の代表元を返す。
-    pub fn find_root(&mut self, a: usize) -> usize {
-        if self.size[a] > 0 {
-            return a;
-        }
-        self.par[a] = self.find_root(self.par[a]);
-        self.par[a]
-    }
-
-    /// 辺 `(a, b)` を追加し、追加後の連結成分の代表元を返す。
-    pub fn union(&mut self, a: usize, b: usize) -> usize {
-        let mut x = self.find_root(a);
-        let mut y = self.find_root(b);
-        if x == y {
-            return x;
-        }
-        if self.size[x] < self.size[y] {
-            std::mem::swap(&mut x, &mut y);
-        }
-        self.size[x] += self.size[y];
-        self.size[y] = 0;
-        self.par[y] = x;
-        x
-    }
-
-    /// 頂点 `a` と 頂点 `b` が同じ連結成分に属しているかを返す。
-    pub fn in_same_set(&mut self, a: usize, b: usize) -> bool {
-        self.find_root(a) == self.find_root(b)
-    }
-
-    /// 頂点 `a` の属する連結成分のサイズを返す。
-    pub fn group_size(&mut self, a: usize) -> usize {
-        let x = self.find_root(a);
-        self.size[x]
-    }
-}
-
 #[derive(Clone, Copy)]
 struct Pos {
     y: usize,
     x: usize,
+}
+
+impl Default for Pos {
+    fn default() -> Self {
+        Self { y: 0, x: 0 }
+    }
 }
 
 fn abs_diff(a: usize, b: usize) -> usize {
@@ -133,7 +88,9 @@ struct Solver {
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
-    uf_node: UnionFind,
+    connected: Vec<bool>, // 接続されているかを確認する
+    n_connected: usize,
+    uf_field: UnionFind<usize>, // フィールドの連結状況を管理する
 }
 
 impl Solver {
@@ -145,6 +102,11 @@ impl Solver {
         source_pos: Vec<Pos>,
         house_pos: Vec<Pos>,
     ) -> Self {
+        let mut uf_field = UnionFind::new(n * n + 1);
+        // ソースを接続しておく
+        for source in &source_pos {
+            uf_field.union(source.y * n + source.x, n * n);
+        }
         Self {
             n,
             w,
@@ -153,46 +115,93 @@ impl Solver {
             source_pos,
             house_pos,
             field: Field::new(n, c),
-            uf_node: UnionFind::new(k + 1),
+            connected: vec![false; n],
+            n_connected: 0,
+            uf_field: uf_field, // n * n  はソース
         }
     }
 
     pub fn all_connected(&mut self) -> bool {
-        self.uf_node.group_size(self.k) == self.k + 1
+        self.n_connected == self.n
     }
 
-    pub fn connected(&mut self, i: usize) -> bool {
-        self.uf_node.in_same_set(i, self.k)
+    pub fn field_index(&self, y: usize, x: usize) -> usize {
+        y * self.n + x
     }
 
-    pub fn solve(&mut self) {
-        let mut connected_places = self.source_pos.clone();
-        while !self.all_connected() {
-            // 一番近いところを探す
+    pub fn is_reachable_pos(&mut self, y: usize, x: usize) -> bool {
+        self.uf_field.equiv(self.field_index(y, x), self.n * self.n)
+    }
 
-            let mut from_idx = 0;
-            let mut to_idx = 0;
-            let mut dist = std::usize::MAX;
-            // 接続されている場所を見ていく
-            for i in 0..connected_places.len() {
-                // 家を見ていく
-                for j in 0..self.k {
-                    // 繋がっている
-                    if self.connected(j) {
+    pub fn update_graph(&mut self, start_y: usize, start_x: usize, goal_y: usize, goal_x: usize) {
+        // アップデートする
+        self.uf_field.union(
+            self.field_index(start_y, start_x),
+            self.field_index(goal_y, goal_x),
+        );
+    }
+
+    pub fn find_nearest(&mut self, pos: Pos) -> Pos {
+        // 一番近い場所を探す
+        let y = pos.y as i32;
+        let x = pos.x as i32;
+        for d in 1..2 * self.n as i32 {
+            for nx in x - d..=x + d {
+                if nx < 0 || nx >= self.n as i32 {
+                    continue;
+                }
+                let c = d - (nx - x).abs();
+                for ny in [y - c, y + c] {
+                    if ny < 0 || ny >= self.n as i32 {
                         continue;
                     }
-                    let new_dist = connected_places[i].dist(&self.house_pos[j]);
-                    if new_dist < dist {
-                        dist = new_dist;
-                        from_idx = i;
-                        to_idx = j;
+
+                    // println!("# a {} {} {} {}", y, x, ny, nx);
+                    if ny == 104 && nx == 45 {
+                        println!("# okok");
+                    }
+
+                    if self.is_reachable_pos(ny as usize, nx as usize) {
+                        // println!("# a {} {} {} {}", y, x, ny, nx);
+                        return Pos {
+                            y: ny as usize,
+                            x: nx as usize,
+                        };
                     }
                 }
             }
+        }
+        pos
+    }
 
-            self.mov(connected_places[from_idx], self.house_pos[to_idx]);
-            self.uf_node.union(self.k, to_idx);
-            connected_places.push(self.house_pos[to_idx]);
+    pub fn solve(&mut self) {
+        while !self.all_connected() {
+            let mut i_start = 0;
+            let mut goal = Pos::default();
+            let mut dist = std::usize::MAX;
+
+            // 家を見ていく
+            for i in 0..self.k {
+                if self.connected[i] {
+                    continue;
+                }
+                let new_goal = self.find_nearest(self.house_pos[i]);
+                let new_dist = self.house_pos[i].dist(&new_goal);
+                println!(
+                    "# new goal {} {} {} {} new dist {}",
+                    self.house_pos[i].y, self.house_pos[i].x, new_goal.y, new_goal.x, new_dist
+                );
+                if new_dist < dist {
+                    dist = new_dist;
+                    i_start = i;
+                    goal = new_goal;
+                }
+            }
+
+            println!("# !!! {} {} {}", i_start, goal.y, goal.x);
+            self.mov(self.house_pos[i_start], goal);
+            self.connected[i_start] = true;
+            self.n_connected += 1;
         }
     }
 
@@ -201,11 +210,11 @@ impl Solver {
             "# move from ({}, {}) to {} {}",
             start.y, start.x, goal.y, goal.x
         );
-        // スタートからゴールまでの角度
         let mut hist = Vec::new();
         let mut cur_y = start.y;
         let mut cur_x = start.x;
         self.destruct(cur_y, cur_x);
+        self.update_graph(start.y, start.x, cur_y, cur_x);
         hist.push((cur_y, cur_x));
         while cur_y != goal.y || cur_x != goal.x {
             let dy = abs_diff(cur_y, goal.y);
@@ -246,6 +255,9 @@ impl Solver {
             }
             // コストを計算
             self.destruct(cur_y, cur_x);
+            // グラフを更新
+            self.update_graph(start.y, start.x, cur_y, cur_x);
+            // 履歴を更新
             hist.push((cur_y, cur_x));
         }
     }
