@@ -124,10 +124,10 @@ impl Field {
 
 #[allow(unused)]
 struct Solver {
-    n: usize,
-    w: usize,
-    k: usize,
-    c: usize,
+    n: usize, // 土地のサイズ、 n = 200
+    w: usize, // 水源の数、1 <= w <= 4
+    k: usize, // 家の数、 1 <= k <= 10
+    c: usize, // 体力の消費, c in 1,2,4,8,16,32,64,128
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
@@ -164,74 +164,67 @@ impl Solver {
     }
 
     pub fn solve(&mut self) {
+        let mut connected_places = self.source_pos.clone();
         while !self.all_connected() {
-            for i in 0..self.k {
-                // すでに水源に接続されている
-                if self.connected(i) {
-                    continue;
-                }
+            // 一番近いところを探す
 
-                // 接続されていない
-                let mut hidx = 0;
-                let mut hdist = std::usize::MAX;
+            let mut from_idx = 0;
+            let mut to_idx = 0;
+            let mut dist = std::usize::MAX;
+            // 接続されている場所を見ていく
+            for i in 0..connected_places.len() {
+                // 家を見ていく
                 for j in 0..self.k {
-                    if self.uf_node.in_same_set(i, j) {
+                    // 繋がっている
+                    if self.connected(j) {
                         continue;
                     }
-                    let d = self.house_pos[i].dist(&self.house_pos[j]);
-                    if d < hdist {
-                        hdist = d;
-                        hidx = j;
+                    let new_dist = connected_places[i].dist(&self.house_pos[j]);
+                    if new_dist < dist {
+                        dist = new_dist;
+                        from_idx = i;
+                        to_idx = j;
                     }
                 }
+            }
 
-                let mut sidx = 0;
-                let mut sdist = std::usize::MAX;
-                for j in 0..self.w {
-                    let d = self.house_pos[i].dist(&self.source_pos[j]);
-                    if d < sdist {
-                        sdist = d;
-                        sidx = j;
-                    }
-                }
+            self.mov(connected_places[from_idx], self.house_pos[to_idx]);
+            self.uf_node.union(self.k, to_idx);
+            connected_places.push(self.house_pos[to_idx]);
+        }
+    }
 
-                if sdist < hdist {
-                    // 水源に繋いだ方が近い
-                    self.mov(self.house_pos[i], self.source_pos[sidx]);
-                    self.uf_node.union(i, self.k);
-                } else {
-                    self.mov(self.house_pos[i], self.house_pos[hidx]);
-                    self.uf_node.union(i, hidx);
-                }
+    pub fn mov_y(&mut self, start_y: usize, start_x: usize, goal_y: usize) {
+        if start_y < goal_y {
+            for y in start_y..=goal_y {
+                self.destruct(y, start_x);
+            }
+        } else {
+            for y in (goal_y..=start_y).rev() {
+                self.destruct(y, start_x)
+            }
+        }
+    }
+
+    pub fn mov_x(&mut self, start_y: usize, start_x: usize, goal_x: usize) {
+        if start_x < goal_x {
+            for x in start_x..=goal_x {
+                self.destruct(start_y, x);
+            }
+        } else {
+            for x in (goal_x..=start_x).rev() {
+                self.destruct(start_y, x);
             }
         }
     }
 
     pub fn mov(&mut self, start: Pos, goal: Pos) {
-        // println!(
-        //     "# move from ({}, {}) to {} {}",
-        //     start.y, start.x, goal.y, goal.x
-        // );
-
-        if start.y < goal.y {
-            for y in start.y..=goal.y {
-                self.destruct(y, start.x);
-            }
-        } else {
-            for y in (goal.y..=start.y).rev() {
-                self.destruct(y, start.x)
-            }
-        }
-
-        if start.x < goal.x {
-            for x in start.x..=goal.x {
-                self.destruct(goal.y, x);
-            }
-        } else {
-            for x in (goal.x..=start.x).rev() {
-                self.destruct(goal.y, x);
-            }
-        }
+        println!(
+            "# move from ({}, {}) to {} {}",
+            start.y, start.x, goal.y, goal.x
+        );
+        self.mov_y(start.y, start.x, goal.y);
+        self.mov_x(goal.y, start.x, goal.x);
     }
 
     pub fn destruct(&mut self, y: usize, x: usize) {
