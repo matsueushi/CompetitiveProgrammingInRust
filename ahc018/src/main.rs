@@ -87,7 +87,7 @@ struct Field {
     n: usize,
     c: usize,
     is_broken: Vec<Vec<bool>>,
-    cost: Vec<Vec<usize>>,
+    cost: Vec<Vec<i64>>,
     total_cost: usize,
 }
 
@@ -104,7 +104,7 @@ impl Field {
 
     pub fn query(&mut self, y: usize, x: usize, power: usize) -> Response {
         self.total_cost += power + self.c;
-        self.cost[y][x] += power + self.c;
+        self.cost[y][x] += (power + self.c) as i64;
         println!("{} {} {}", y, x, power);
 
         let r: i32 = read!();
@@ -216,7 +216,8 @@ impl Solver {
                 // x 方向に動かす
                 toward(&mut cur_x, goal.x);
             } else {
-                if hist.len() == 1 {
+                let len = hist.len();
+                if len == 1 {
                     if dy > dx {
                         toward(&mut cur_y, goal.y);
                     } else {
@@ -224,10 +225,21 @@ impl Solver {
                     }
                 } else {
                     // ここで勾配を計算したい
-                    if dy > dx {
-                        toward(&mut cur_y, goal.y);
+                    let (prev_y, prev_x) = hist[len - 2];
+                    let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
+                    if grad > 0 {
+                        // 勾配が正なので、避けていけないか
+                        if cur_y > prev_y {
+                            toward(&mut cur_x, goal.x);
+                        } else {
+                            toward(&mut cur_y, goal.y);
+                        }
                     } else {
-                        toward(&mut cur_x, goal.x);
+                        if dy > dx {
+                            toward(&mut cur_y, goal.y);
+                        } else {
+                            toward(&mut cur_x, goal.x);
+                        }
                     }
                 }
             }
@@ -237,7 +249,7 @@ impl Solver {
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) -> usize {
+    pub fn destruct(&mut self, y: usize, x: usize) {
         const POWER: usize = 100;
         while !self.field.is_broken[y][x] {
             let result = self.field.query(y, x, POWER);
@@ -253,7 +265,6 @@ impl Solver {
                 _ => {}
             }
         }
-        return self.field.cost[y][x];
     }
 }
 
