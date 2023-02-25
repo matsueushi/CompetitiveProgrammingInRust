@@ -131,7 +131,7 @@ struct Solver {
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
-    uf: UnionFind,
+    uf_node: UnionFind,
 }
 
 impl Solver {
@@ -151,16 +151,16 @@ impl Solver {
             source_pos,
             house_pos,
             field: Field::new(n, c),
-            uf: UnionFind::new(k + 1),
+            uf_node: UnionFind::new(k + 1),
         }
     }
 
     pub fn all_connected(&mut self) -> bool {
-        self.uf.group_size(self.k) == self.k + 1
+        self.uf_node.group_size(self.k) == self.k + 1
     }
 
     pub fn connected(&mut self, i: usize) -> bool {
-        self.uf.in_same_set(i, self.k)
+        self.uf_node.in_same_set(i, self.k)
     }
 
     pub fn solve(&mut self) {
@@ -175,7 +175,7 @@ impl Solver {
                 let mut hidx = 0;
                 let mut hdist = std::usize::MAX;
                 for j in 0..self.k {
-                    if self.uf.in_same_set(i, j) {
+                    if self.uf_node.in_same_set(i, j) {
                         continue;
                     }
                     let d = self.house_pos[i].dist(&self.house_pos[j]);
@@ -198,20 +198,20 @@ impl Solver {
                 if sdist < hdist {
                     // 水源に繋いだ方が近い
                     self.mov(self.house_pos[i], self.source_pos[sidx]);
-                    self.uf.union(i, self.k);
+                    self.uf_node.union(i, self.k);
                 } else {
                     self.mov(self.house_pos[i], self.house_pos[hidx]);
-                    self.uf.union(i, hidx);
+                    self.uf_node.union(i, hidx);
                 }
             }
         }
     }
 
     pub fn mov(&mut self, start: Pos, goal: Pos) {
-        println!(
-            "# move from ({}, {}) to {} {}",
-            start.y, start.x, goal.y, goal.x
-        );
+        // println!(
+        //     "# move from ({}, {}) to {} {}",
+        //     start.y, start.x, goal.y, goal.x
+        // );
 
         if start.y < goal.y {
             for y in start.y..=goal.y {
