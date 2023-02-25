@@ -37,6 +37,7 @@ struct Field {
     c: usize,
     is_broken: Vec<Vec<bool>>,
     cost: Vec<Vec<i64>>,
+    n_trial: Vec<Vec<usize>>,
     total_cost: usize,
 }
 
@@ -47,6 +48,7 @@ impl Field {
             c,
             is_broken: vec![vec![false; n]; n],
             cost: vec![vec![0; n]; n],
+            n_trial: vec![vec![0; n]; n],
             total_cost: 0,
         }
     }
@@ -157,7 +159,7 @@ impl Solver {
         let mut hist = Vec::new();
         let mut cur_y = start.y;
         let mut cur_x = start.x;
-        self.destruct(cur_y, cur_x);
+        self.destruct(cur_y, cur_x, 100);
         hist.push((cur_y, cur_x));
         while cur_y != goal.y || cur_x != goal.x {
             let dy = abs_diff(cur_y, goal.y);
@@ -196,15 +198,15 @@ impl Solver {
                 }
             }
             // コストを計算
-            self.destruct(cur_y, cur_x);
+            self.destruct(cur_y, cur_x, 100);
             hist.push((cur_y, cur_x));
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) {
-        const POWER: usize = 100;
+    pub fn destruct(&mut self, y: usize, x: usize, power: usize) {
         while !self.field.is_broken[y][x] {
-            let result = self.field.query(y, x, POWER);
+            self.field.n_trial[y][x] += 1;
+            let result = self.field.query(y, x, power);
             match result {
                 Response::Finish => {
                     // eprintln!("total_cost={}", self.field.total_cost);
