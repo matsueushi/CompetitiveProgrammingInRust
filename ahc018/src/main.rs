@@ -1,59 +1,8 @@
+use petgraph::unionfind::UnionFind;
 use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
 use text_io::read;
-
-#[derive(Debug, Clone)]
-pub struct UnionFind {
-    par: Vec<usize>,
-    size: Vec<usize>,
-}
-
-impl UnionFind {
-    /// 大きさ `n` の Union-Find 木を初期化する。
-    pub fn new(n: usize) -> Self {
-        Self {
-            par: vec![0; n],
-            size: vec![1; n],
-        }
-    }
-
-    /// 頂点 `a` の属する連結成分の代表元を返す。
-    pub fn find_root(&mut self, a: usize) -> usize {
-        if self.size[a] > 0 {
-            return a;
-        }
-        self.par[a] = self.find_root(self.par[a]);
-        self.par[a]
-    }
-
-    /// 辺 `(a, b)` を追加し、追加後の連結成分の代表元を返す。
-    pub fn union(&mut self, a: usize, b: usize) -> usize {
-        let mut x = self.find_root(a);
-        let mut y = self.find_root(b);
-        if x == y {
-            return x;
-        }
-        if self.size[x] < self.size[y] {
-            std::mem::swap(&mut x, &mut y);
-        }
-        self.size[x] += self.size[y];
-        self.size[y] = 0;
-        self.par[y] = x;
-        x
-    }
-
-    /// 頂点 `a` と 頂点 `b` が同じ連結成分に属しているかを返す。
-    pub fn in_same_set(&mut self, a: usize, b: usize) -> bool {
-        self.find_root(a) == self.find_root(b)
-    }
-
-    /// 頂点 `a` の属する連結成分のサイズを返す。
-    pub fn group_size(&mut self, a: usize) -> usize {
-        let x = self.find_root(a);
-        self.size[x]
-    }
-}
 
 #[derive(Clone, Copy)]
 struct Pos {
@@ -133,7 +82,8 @@ struct Solver {
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
-    uf_node: UnionFind,
+    uf_node: UnionFind<usize>,
+    n_connected: usize,
 }
 
 impl Solver {
@@ -154,15 +104,16 @@ impl Solver {
             house_pos,
             field: Field::new(n, c),
             uf_node: UnionFind::new(k + 1),
+            n_connected: 0,
         }
     }
 
     pub fn all_connected(&mut self) -> bool {
-        self.uf_node.group_size(self.k) == self.k + 1
+        self.n_connected == self.k
     }
 
     pub fn connected(&mut self, i: usize) -> bool {
-        self.uf_node.in_same_set(i, self.k)
+        self.uf_node.equiv(i, self.k)
     }
 
     pub fn solve(&mut self) {
@@ -193,6 +144,7 @@ impl Solver {
             self.mov(connected_places[from_idx], self.house_pos[to_idx]);
             self.uf_node.union(self.k, to_idx);
             connected_places.push(self.house_pos[to_idx]);
+            self.n_connected += 1;
         }
     }
 
