@@ -192,23 +192,16 @@ impl Solver {
                 let (prev_y, prev_x) = hist[len - 2];
                 let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
 
-                // self.update_power(cur_y, cur_x, prev_y, prev_x);
-
-                if dx == 0 {
-                    // y 方向に動かす
-                    toward(&mut cur_y, goal.y);
-                } else if dy == 0 {
-                    // x 方向に動かす
-                    toward(&mut cur_x, goal.x);
-                } else if grad > 0 {
+                if grad > 0 {
                     // 勾配が正なので、避けていけないか
-                    if cur_y != prev_y {
+                    if (dx != 0 && cur_y != prev_y) || dy == 0 {
                         toward(&mut cur_x, goal.x);
                     } else {
                         toward(&mut cur_y, goal.y);
                     }
                 } else {
-                    if cur_y != prev_y {
+                    if (dy != 0 && cur_y != prev_y) || dx == 0 {
+                        // 同じ方向に進む
                         toward(&mut cur_y, goal.y);
                     } else {
                         toward(&mut cur_x, goal.x);
