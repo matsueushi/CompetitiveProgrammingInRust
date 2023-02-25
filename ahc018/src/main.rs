@@ -162,37 +162,36 @@ impl Solver {
         while cur_y != goal.y || cur_x != goal.x {
             let dy = abs_diff(cur_y, goal.y);
             let dx = abs_diff(cur_x, goal.x);
-            if dx == 0 {
-                // y 方向に動かす
-                toward(&mut cur_y, goal.y);
-            } else if dy == 0 {
-                // x 方向に動かす
-                toward(&mut cur_x, goal.x);
+
+            let len = hist.len();
+            if len == 1 {
+                if dy > dx {
+                    toward(&mut cur_y, goal.y);
+                } else {
+                    toward(&mut cur_x, goal.x);
+                }
             } else {
-                let len = hist.len();
-                if len == 1 {
-                    if dy > dx {
+                // ここで勾配を計算したい
+                let (prev_y, prev_x) = hist[len - 2];
+                let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
+                if dx == 0 {
+                    // y 方向に動かす
+                    toward(&mut cur_y, goal.y);
+                } else if dy == 0 {
+                    // x 方向に動かす
+                    toward(&mut cur_x, goal.x);
+                } else if grad > 0 {
+                    // 勾配が正なので、避けていけないか
+                    if cur_y != prev_y {
+                        toward(&mut cur_x, goal.x);
+                    } else {
+                        toward(&mut cur_y, goal.y);
+                    }
+                } else {
+                    if cur_y != prev_y {
                         toward(&mut cur_y, goal.y);
                     } else {
                         toward(&mut cur_x, goal.x);
-                    }
-                } else {
-                    // ここで勾配を計算したい
-                    let (prev_y, prev_x) = hist[len - 2];
-                    let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
-                    if grad > 0 {
-                        // 勾配が正なので、避けていけないか
-                        if cur_y != prev_y {
-                            toward(&mut cur_x, goal.x);
-                        } else {
-                            toward(&mut cur_y, goal.y);
-                        }
-                    } else {
-                        if cur_y != prev_y {
-                            toward(&mut cur_y, goal.y);
-                        } else {
-                            toward(&mut cur_x, goal.x);
-                        }
                     }
                 }
             }
