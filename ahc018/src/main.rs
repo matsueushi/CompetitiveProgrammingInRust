@@ -86,6 +86,7 @@ struct Solver {
     field: Field,
     uf_node: UnionFind<usize>,
     n_connected: usize,
+    base_power: usize,
 }
 
 impl Solver {
@@ -107,6 +108,7 @@ impl Solver {
             field: Field::new(n, c),
             uf_node: UnionFind::new(k + 1),
             n_connected: 0,
+            base_power: 100,
         }
     }
 
@@ -150,6 +152,19 @@ impl Solver {
         }
     }
 
+    // pub fn update_power(&mut self, cur_y: usize, cur_x: usize, prev_y: usize, prev_x: usize) {
+    // あまり効果は見られない。
+    // 力の調節よりも、場所の探索の方が重要そう。
+    //     let grad_trial =
+    //         self.field.n_trial[cur_y][cur_x] as i64 - self.field.n_trial[prev_y][prev_x] as i64;
+
+    //     if grad_trial > 0 {
+    //         self.base_power = ((self.base_power as f64) * 1.05).min(200.0).round() as usize;
+    //     } else {
+    //         self.base_power = ((self.base_power as f64) * 0.9).max(25.0).round() as usize;
+    //     }
+    // }
+
     pub fn mov(&mut self, start: Pos, goal: Pos) {
         println!(
             "# move from ({}, {}) to {} {}",
@@ -159,7 +174,7 @@ impl Solver {
         let mut hist = Vec::new();
         let mut cur_y = start.y;
         let mut cur_x = start.x;
-        self.destruct(cur_y, cur_x, 100);
+        self.destruct(cur_y, cur_x);
         hist.push((cur_y, cur_x));
         while cur_y != goal.y || cur_x != goal.x {
             let dy = abs_diff(cur_y, goal.y);
@@ -176,6 +191,9 @@ impl Solver {
                 // ここで勾配を計算したい
                 let (prev_y, prev_x) = hist[len - 2];
                 let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
+
+                // self.update_power(cur_y, cur_x, prev_y, prev_x);
+
                 if dx == 0 {
                     // y 方向に動かす
                     toward(&mut cur_y, goal.y);
@@ -198,15 +216,15 @@ impl Solver {
                 }
             }
             // コストを計算
-            self.destruct(cur_y, cur_x, 100);
+            self.destruct(cur_y, cur_x);
             hist.push((cur_y, cur_x));
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize, power: usize) {
+    pub fn destruct(&mut self, y: usize, x: usize) {
         while !self.field.is_broken[y][x] {
             self.field.n_trial[y][x] += 1;
-            let result = self.field.query(y, x, power);
+            let result = self.field.query(y, x, self.base_power);
             match result {
                 Response::Finish => {
                     // eprintln!("total_cost={}", self.field.total_cost);
