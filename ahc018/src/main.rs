@@ -152,18 +152,17 @@ impl Solver {
         }
     }
 
-    // pub fn update_power(&mut self, cur_y: usize, cur_x: usize, prev_y: usize, prev_x: usize) {
-    // あまり効果は見られない。
-    // 力の調節よりも、場所の探索の方が重要そう。
-    //     let grad_trial =
-    //         self.field.n_trial[cur_y][cur_x] as i64 - self.field.n_trial[prev_y][prev_x] as i64;
+    pub fn update_power(&mut self, cur_y: usize, cur_x: usize) {
+        // あまり効果は見られない。
+        // 力の調節よりも、場所の探索の方が重要そう。
+        let n_trial = self.field.n_trial[cur_y][cur_x] as i64;
 
-    //     if grad_trial > 0 {
-    //         self.base_power = ((self.base_power as f64) * 1.05).min(200.0).round() as usize;
-    //     } else {
-    //         self.base_power = ((self.base_power as f64) * 0.9).max(25.0).round() as usize;
-    //     }
-    // }
+        if n_trial > 1 {
+            self.base_power = 100;
+        } else {
+            self.base_power = ((self.base_power as f64) * 0.9).max(25.0).round() as usize;
+        }
+    }
 
     pub fn mov(&mut self, start: Pos, goal: Pos) {
         println!(
@@ -179,6 +178,8 @@ impl Solver {
         while cur_y != goal.y || cur_x != goal.x {
             let dy = abs_diff(cur_y, goal.y);
             let dx = abs_diff(cur_x, goal.x);
+
+            self.update_power(cur_y, cur_x);
 
             let len = hist.len();
             if len == 1 {
