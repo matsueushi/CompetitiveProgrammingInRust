@@ -234,7 +234,7 @@ impl Solver {
                     let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
                     if grad > 0 {
                         // 勾配が正なので、避けていけないか
-                        if cur_y > prev_y {
+                        if cur_y != prev_y {
                             toward(&mut cur_x, goal.x);
                         } else {
                             toward(&mut cur_y, goal.y);
