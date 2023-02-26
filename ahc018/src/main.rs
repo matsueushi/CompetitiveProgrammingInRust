@@ -187,31 +187,34 @@ impl Solver {
 
             self.update_power(cur_y, cur_x);
 
+            let direction_x = goal.x > cur_x;
+            let direction_y = goal.y > cur_y;
+
             let len = hist.len();
             if len == 1 {
                 if dy > dx {
-                    toward(&mut cur_y, goal.y);
+                    toward(&mut cur_y, direction_y);
                 } else {
-                    toward(&mut cur_x, goal.x);
+                    toward(&mut cur_x, direction_x);
                 }
             } else {
-                // ここで勾配を計算したい
+                // ここで勾配を計算
                 let (prev_y, prev_x) = hist[len - 2];
                 let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
 
                 if grad > 0 {
                     // 勾配が正なので、避けていけないか
                     if (dx != 0 && cur_y != prev_y) || dy == 0 {
-                        toward(&mut cur_x, goal.x);
+                        toward(&mut cur_x, direction_x);
                     } else {
-                        toward(&mut cur_y, goal.y);
+                        toward(&mut cur_y, direction_y);
                     }
                 } else {
                     if (dy != 0 && cur_y != prev_y) || dx == 0 {
                         // 同じ方向に進む
-                        toward(&mut cur_y, goal.y);
+                        toward(&mut cur_y, direction_y);
                     } else {
-                        toward(&mut cur_x, goal.x);
+                        toward(&mut cur_x, direction_x);
                     }
                 }
             }
@@ -240,8 +243,8 @@ impl Solver {
     }
 }
 
-pub fn toward(v: &mut usize, nv: usize) {
-    if *v < nv {
+pub fn toward(v: &mut usize, direction: bool) {
+    if direction {
         *v += 1;
     } else {
         *v -= 1;
