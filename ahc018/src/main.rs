@@ -164,7 +164,7 @@ impl Solver {
         let n_trial = self.field.n_trial[cur_y][cur_x] as i64;
 
         if n_trial > 1 {
-            self.base_power = 100;
+            self.base_power = 100.max(self.c * 2);
         } else {
             self.base_power = ((self.base_power as f64) * 0.9).max(25.0).round() as usize;
         }
