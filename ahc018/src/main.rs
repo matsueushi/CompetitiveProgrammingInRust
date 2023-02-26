@@ -10,6 +10,12 @@ struct Pos {
     x: usize,
 }
 
+impl Default for Pos {
+    fn default() -> Self {
+        Self { y: 0, x: 0 }
+    }
+}
+
 fn abs_diff(a: usize, b: usize) -> usize {
     if a > b {
         a - b
