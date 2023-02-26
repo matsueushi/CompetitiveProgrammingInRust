@@ -90,7 +90,7 @@ struct Solver {
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
-    uf_node: UnionFind<usize>,
+    uf: UnionFind<usize>,
     n_connected: usize,
     base_power: usize,
 }
@@ -104,6 +104,11 @@ impl Solver {
         source_pos: Vec<Pos>,
         house_pos: Vec<Pos>,
     ) -> Self {
+        let mut uf = UnionFind::new(n * n + 1);
+        // ソースを接続しておく
+        for source in &source_pos {
+            uf.union(source.y * n + source.x, n * n);
+        }
         Self {
             n,
             w,
@@ -112,7 +117,7 @@ impl Solver {
             source_pos,
             house_pos,
             field: Field::new(n, c),
-            uf_node: UnionFind::new(k + 1),
+            uf,
             n_connected: 0,
             base_power: 100,
         }
@@ -122,8 +127,25 @@ impl Solver {
         self.n_connected == self.k
     }
 
+    pub fn field_index(&self, y: usize, x: usize) -> usize {
+        y * self.n + x
+    }
+
+    pub fn is_reachable_pos(&mut self, y: usize, x: usize) -> bool {
+        self.uf.equiv(self.field_index(y, x), self.n * self.n)
+    }
+
+    pub fn update_graph(&mut self, start_y: usize, start_x: usize, goal_y: usize, goal_x: usize) {
+        // アップデートする
+        self.uf.union(
+            self.field_index(start_y, start_x),
+            self.field_index(goal_y, goal_x),
+        );
+    }
+
     pub fn connected(&mut self, i: usize) -> bool {
-        self.uf_node.equiv(i, self.k)
+        let Pos { y, x } = self.house_pos[i];
+        self.is_reachable_pos(y, x)
     }
 
     pub fn solve(&mut self) {
@@ -152,7 +174,6 @@ impl Solver {
             }
 
             self.mov(connected_places[from_idx], self.house_pos[to_idx]);
-            self.uf_node.union(self.k, to_idx);
             connected_places.push(self.house_pos[to_idx]);
             self.n_connected += 1;
         }
@@ -181,6 +202,7 @@ impl Solver {
         let mut cur_y = start.y;
         let mut cur_x = start.x;
         self.destruct(cur_y, cur_x);
+        self.update_graph(start.y, start.x, cur_y, cur_x);
         hist.push((cur_y, cur_x));
         while cur_y != goal.y || cur_x != goal.x {
             let dy = cur_y as i64 - goal.y as i64;
@@ -221,6 +243,7 @@ impl Solver {
             }
             // コストを計算
             self.destruct(cur_y, cur_x);
+            self.update_graph(start.y, start.x, cur_y, cur_x);
             hist.push((cur_y, cur_x));
         }
     }
