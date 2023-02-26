@@ -28,6 +28,10 @@ impl Pos {
     pub fn dist(&self, other: &Pos) -> usize {
         abs_diff(self.x, other.x) + abs_diff(self.y, other.y)
     }
+
+    pub fn dist2(&self, other: &Pos) -> usize {
+        abs_diff(abs_diff(self.x, other.x), abs_diff(self.y, other.y))
+    }
 }
 
 enum Response {
@@ -164,7 +168,8 @@ impl Solver {
                     if self.connected(j) {
                         continue;
                     }
-                    let new_dist = connected_places[i].dist(&self.house_pos[j]);
+                    let new_dist = connected_places[i].dist(&self.house_pos[j])
+                        + (connected_places[i].dist2(&self.house_pos[j]) as f64 * 0.25) as usize;
                     if new_dist < dist {
                         dist = new_dist;
                         from_idx = i;
@@ -203,7 +208,7 @@ impl Solver {
         self.destruct(cur_y, cur_x);
         self.update_graph(start.y, start.x, cur_y, cur_x);
         hist.push((cur_y, cur_x));
-        while !self.is_reachable_pos(cur_y, cur_x) {
+        while cur_y != goal.y || cur_x != goal.x {
             let dy = cur_y as i64 - goal.y as i64;
             let dx = cur_x as i64 - goal.x as i64;
 
