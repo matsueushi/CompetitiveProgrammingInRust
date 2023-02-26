@@ -197,14 +197,13 @@ impl Solver {
             start.y, start.x, goal.y, goal.x
         );
 
-        // スタートからゴールまでの角度
         let mut hist = Vec::new();
         let mut cur_y = start.y;
         let mut cur_x = start.x;
         self.destruct(cur_y, cur_x);
         self.update_graph(start.y, start.x, cur_y, cur_x);
         hist.push((cur_y, cur_x));
-        while cur_y != goal.y || cur_x != goal.x {
+        while !self.is_reachable_pos(cur_y, cur_x) {
             let dy = cur_y as i64 - goal.y as i64;
             let dx = cur_x as i64 - goal.x as i64;
 
@@ -216,9 +215,9 @@ impl Solver {
             let len = hist.len();
             if len == 1 {
                 if dy.abs() > dx.abs() {
-                    self.toward(&mut cur_y, direction_y);
+                    cur_y = self.toward(cur_y, direction_y);
                 } else {
-                    self.toward(&mut cur_x, direction_x);
+                    cur_x = self.toward(cur_x, direction_x);
                 }
             } else {
                 // ここで勾配を計算
@@ -228,16 +227,16 @@ impl Solver {
                 if grad > 0 {
                     // 勾配が正なので、避けていけないか
                     if (dx != 0 && cur_y != prev_y) || dy == 0 {
-                        self.toward(&mut cur_x, direction_x);
+                        cur_x = self.toward(cur_x, direction_x);
                     } else {
-                        self.toward(&mut cur_y, direction_y);
+                        cur_y = self.toward(cur_y, direction_y);
                     }
                 } else {
                     if (dy != 0 && cur_y != prev_y) || dx == 0 {
                         // 同じ方向に進む
-                        self.toward(&mut cur_y, direction_y);
+                        cur_y = self.toward(cur_y, direction_y);
                     } else {
-                        self.toward(&mut cur_x, direction_x);
+                        cur_x = self.toward(cur_x, direction_x);
                     }
                 }
             }
@@ -266,11 +265,13 @@ impl Solver {
         }
     }
 
-    pub fn toward(&self, v: &mut usize, direction: bool) {
-        if direction && *v < self.n - 1 {
-            *v += 1;
-        } else if *v > 0 {
-            *v -= 1;
+    pub fn toward(&self, v: usize, direction: bool) -> usize {
+        if direction && v < self.n - 1 {
+            v + 1
+        } else if v > 0 {
+            v - 1
+        } else {
+            v
         }
     }
 }
