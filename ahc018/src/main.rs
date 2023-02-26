@@ -175,6 +175,10 @@ impl Solver {
             "# move from ({}, {}) to {} {}",
             start.y, start.x, goal.y, goal.x
         );
+
+        let orig_y = abs_diff(start.y, goal.y);
+        let orig_x = abs_diff(start.x, goal.x);
+
         // スタートからゴールまでの角度
         let mut hist = Vec::new();
         let mut cur_y = start.y;
@@ -182,8 +186,8 @@ impl Solver {
         self.destruct(cur_y, cur_x);
         hist.push((cur_y, cur_x));
         while cur_y != goal.y || cur_x != goal.x {
-            let dy = abs_diff(cur_y, goal.y);
-            let dx = abs_diff(cur_x, goal.x);
+            let dy = cur_y as i64 - goal.y as i64;
+            let dx = cur_x as i64 - goal.x as i64;
 
             self.update_power(cur_y, cur_x);
 
@@ -192,7 +196,7 @@ impl Solver {
 
             let len = hist.len();
             if len == 1 {
-                if dy > dx {
+                if dy.abs() > dx.abs() {
                     toward(&mut cur_y, direction_y);
                 } else {
                     toward(&mut cur_x, direction_x);
