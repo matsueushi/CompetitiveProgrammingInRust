@@ -176,9 +176,6 @@ impl Solver {
             start.y, start.x, goal.y, goal.x
         );
 
-        let orig_y = abs_diff(start.y, goal.y);
-        let orig_x = abs_diff(start.x, goal.x);
-
         // スタートからゴールまでの角度
         let mut hist = Vec::new();
         let mut cur_y = start.y;
@@ -197,9 +194,9 @@ impl Solver {
             let len = hist.len();
             if len == 1 {
                 if dy.abs() > dx.abs() {
-                    toward(&mut cur_y, direction_y);
+                    self.toward(&mut cur_y, direction_y);
                 } else {
-                    toward(&mut cur_x, direction_x);
+                    self.toward(&mut cur_x, direction_x);
                 }
             } else {
                 // ここで勾配を計算
@@ -209,16 +206,16 @@ impl Solver {
                 if grad > 0 {
                     // 勾配が正なので、避けていけないか
                     if (dx != 0 && cur_y != prev_y) || dy == 0 {
-                        toward(&mut cur_x, direction_x);
+                        self.toward(&mut cur_x, direction_x);
                     } else {
-                        toward(&mut cur_y, direction_y);
+                        self.toward(&mut cur_y, direction_y);
                     }
                 } else {
                     if (dy != 0 && cur_y != prev_y) || dx == 0 {
                         // 同じ方向に進む
-                        toward(&mut cur_y, direction_y);
+                        self.toward(&mut cur_y, direction_y);
                     } else {
-                        toward(&mut cur_x, direction_x);
+                        self.toward(&mut cur_x, direction_x);
                     }
                 }
             }
@@ -245,13 +242,13 @@ impl Solver {
             }
         }
     }
-}
 
-pub fn toward(v: &mut usize, direction: bool) {
-    if direction {
-        *v += 1;
-    } else {
-        *v -= 1;
+    pub fn toward(&self, v: &mut usize, direction: bool) {
+        if direction && *v < self.n - 1 {
+            *v += 1;
+        } else if *v > 0 {
+            *v -= 1;
+        }
     }
 }
 
