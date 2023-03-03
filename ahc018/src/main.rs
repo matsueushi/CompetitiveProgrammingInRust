@@ -4,36 +4,21 @@ use std::io::BufReader;
 use std::process;
 use text_io::read;
 
-#[derive(Clone, Copy)]
+/// 場所を示す構造体。
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 struct Pos {
-    y: usize,
-    x: usize,
-}
-
-impl Default for Pos {
-    fn default() -> Self {
-        Self { y: 0, x: 0 }
-    }
-}
-
-fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
+    y: i64,
+    x: i64,
 }
 
 impl Pos {
-    pub fn dist(&self, other: &Pos) -> usize {
-        abs_diff(self.x, other.x) + abs_diff(self.y, other.y)
-    }
-
-    pub fn dist2(&self, other: &Pos) -> usize {
-        abs_diff(abs_diff(self.x, other.x), abs_diff(self.y, other.y))
+    /// マンハッタン距離
+    pub fn manhattan_dist(&self, other: &Self) -> i64 {
+        (self.y - other.y).abs() + (self.x - other.y).abs()
     }
 }
 
+/// テスターから帰ってくるレスポンス
 enum Response {
     NotBroken,
     Broken,
@@ -41,36 +26,33 @@ enum Response {
     InValid,
 }
 
-#[allow(unused)]
+/// フィールド
 struct Field {
-    n: usize,
-    c: usize,
-    is_broken: Vec<Vec<bool>>,
-    cost: Vec<Vec<i64>>,
-    n_trial: Vec<Vec<usize>>,
-    total_cost: usize,
+    power: Vec<Vec<usize>>,    // 掘削するのに消費したパワー
+    n_trial: Vec<Vec<usize>>,  // 掘削した回数
+    is_broken: Vec<Vec<bool>>, // すでにフィールドが壊れているか
 }
 
 impl Field {
     pub fn new(n: usize, c: usize) -> Self {
         Self {
-            n,
-            c,
-            is_broken: vec![vec![false; n]; n],
-            cost: vec![vec![0; n]; n],
+            power: vec![vec![0; n]; n],
             n_trial: vec![vec![0; n]; n],
-            total_cost: 0,
+            is_broken: vec![vec![false; n]; n],
         }
     }
 
-    pub fn query(&mut self, y: usize, x: usize, power: usize) -> Response {
-        self.total_cost += power + self.c;
-        self.cost[y][x] += (power + self.c) as i64;
-        println!("{} {} {}", y, x, power);
+    /// 破壊クエリを実施する
+    pub fn query(&mut self, pos: &Pos, power: usize) -> Response {
+        let (y, x) = (pos.y as usize, pos.x as usize);
+        self.power[y][x] += power;
+        self.n_trial[y][x] += 1;
 
-        let r: i32 = read!();
+        // クエリ発行
+        println!("{} {} {}", pos.y, pos.x, power);
 
-        match r {
+        // 結果の取得
+        match read!() {
             0 => Response::NotBroken,
             1 => {
                 self.is_broken[y][x] = true;
@@ -85,6 +67,7 @@ impl Field {
     }
 }
 
+/// ソルバー
 #[allow(unused)]
 struct Solver {
     n: usize, // 土地のサイズ、 n = 200
@@ -94,9 +77,6 @@ struct Solver {
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     field: Field,
-    uf: UnionFind<usize>,
-    n_connected: usize,
-    base_power: usize,
 }
 
 impl Solver {
@@ -108,11 +88,7 @@ impl Solver {
         source_pos: Vec<Pos>,
         house_pos: Vec<Pos>,
     ) -> Self {
-        let mut uf = UnionFind::new(n * n + 1);
-        // ソースを接続しておく
-        for source in &source_pos {
-            uf.union(source.y * n + source.x, n * n);
-        }
+        let field = Field::new(n, c);
         Self {
             n,
             w,
@@ -120,142 +96,52 @@ impl Solver {
             c,
             source_pos,
             house_pos,
-            field: Field::new(n, c),
-            uf,
-            n_connected: 0,
-            base_power: 100,
+            field,
         }
-    }
-
-    pub fn all_connected(&mut self) -> bool {
-        self.n_connected == self.k
-    }
-
-    pub fn field_index(&self, y: usize, x: usize) -> usize {
-        y * self.n + x
-    }
-
-    pub fn is_reachable_pos(&mut self, y: usize, x: usize) -> bool {
-        self.uf.equiv(self.field_index(y, x), self.n * self.n)
-    }
-
-    pub fn update_graph(&mut self, start_y: usize, start_x: usize, goal_y: usize, goal_x: usize) {
-        // アップデートする
-        self.uf.union(
-            self.field_index(start_y, start_x),
-            self.field_index(goal_y, goal_x),
-        );
-    }
-
-    pub fn connected(&mut self, i: usize) -> bool {
-        let Pos { y, x } = self.house_pos[i];
-        self.is_reachable_pos(y, x)
     }
 
     pub fn solve(&mut self) {
-        let mut connected_places = self.source_pos.clone();
-        while !self.all_connected() {
-            // 一番近いところを探す
-
-            let mut from_idx = 0;
-            let mut to_idx = 0;
-            let mut dist = std::usize::MAX;
-            // 接続されている場所を見ていく
-            for i in 0..connected_places.len() {
-                // 家を見ていく
-                for j in 0..self.k {
-                    // 繋がっている
-                    if self.connected(j) {
-                        continue;
-                    }
-                    let new_dist = connected_places[i].dist(&self.house_pos[j])
-                        + (connected_places[i].dist2(&self.house_pos[j]) as f64 * 0.25) as usize;
-                    if new_dist < dist {
-                        dist = new_dist;
-                        from_idx = i;
-                        to_idx = j;
-                    }
-                }
-            }
-
-            self.mov(connected_places[from_idx], self.house_pos[to_idx]);
-            connected_places.push(self.house_pos[to_idx]);
-            self.n_connected += 1;
+        for house in self.house_pos.clone() {
+            self.walk(house, self.source_pos[0]);
         }
     }
 
-    pub fn update_power(&mut self, cur_y: usize, cur_x: usize) {
-        // あまり効果は見られない。
-        // 力の調節よりも、場所の探索の方が重要そう。
-        let n_trial = self.field.n_trial[cur_y][cur_x] as i64;
-
-        if n_trial > 1 {
-            self.base_power = 100.max(self.c * 2);
-        } else {
-            self.base_power = ((self.base_power as f64) * 0.9).max(25.0).round() as usize;
-        }
-    }
-
-    pub fn mov(&mut self, start: Pos, goal: Pos) {
+    /// startからgoalに向かう。
+    pub fn walk(&mut self, start: Pos, goal: Pos) {
+        // コメント
         println!(
-            "# move from ({}, {}) to {} {}",
+            "# waok from ({} {}) to ({} {})",
             start.y, start.x, goal.y, goal.x
         );
 
-        let mut hist = Vec::new();
-        let mut cur_y = start.y;
-        let mut cur_x = start.x;
-        self.destruct(cur_y, cur_x);
-        self.update_graph(start.y, start.x, cur_y, cur_x);
-        hist.push((cur_y, cur_x));
-        while cur_y != goal.y || cur_x != goal.x {
-            let dy = cur_y as i64 - goal.y as i64;
-            let dx = cur_x as i64 - goal.x as i64;
-
-            self.update_power(cur_y, cur_x);
-
-            let direction_x = goal.x > cur_x;
-            let direction_y = goal.y > cur_y;
-
-            let len = hist.len();
-            if len == 1 {
-                if dy.abs() > dx.abs() {
-                    cur_y = self.toward(cur_y, direction_y);
-                } else {
-                    cur_x = self.toward(cur_x, direction_x);
-                }
+        let mut pos = start;
+        self.destruct(pos);
+        // y方向に進んでから、x方向に進む
+        while pos != goal {
+            if pos.y < goal.y {
+                pos.y += 1;
+            } else if pos.y > goal.y {
+                pos.y -= 1;
+            } else if pos.x < goal.x {
+                pos.x += 1;
             } else {
-                // ここで勾配を計算
-                let (prev_y, prev_x) = hist[len - 2];
-                let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
-
-                if grad > 0 {
-                    // 勾配が正なので、避けていけないか
-                    if (dx != 0 && cur_y != prev_y) || dy == 0 {
-                        cur_x = self.toward(cur_x, direction_x);
-                    } else {
-                        cur_y = self.toward(cur_y, direction_y);
-                    }
-                } else {
-                    if (dy != 0 && cur_y != prev_y) || dx == 0 {
-                        // 同じ方向に進む
-                        cur_y = self.toward(cur_y, direction_y);
-                    } else {
-                        cur_x = self.toward(cur_x, direction_x);
-                    }
-                }
+                pos.x -= 1;
             }
-            // コストを計算
-            self.destruct(cur_y, cur_x);
-            self.update_graph(start.y, start.x, cur_y, cur_x);
-            hist.push((cur_y, cur_x));
+            self.destruct(pos);
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) {
-        while !self.field.is_broken[y][x] {
-            self.field.n_trial[y][x] += 1;
-            let result = self.field.query(y, x, self.base_power);
+    /// 掘るときの力
+    pub fn destruct_power(&self, pos: Pos) -> usize {
+        // 100固定
+        100
+    }
+
+    /// 掘る
+    pub fn destruct(&mut self, pos: Pos) {
+        let power = self.destruct_power(pos);
+        while !self.field.is_broken[pos.y as usize][pos.x as usize] {
+            let result = self.field.query(&pos, power);
             match result {
                 Response::Finish => {
                     // eprintln!("total_cost={}", self.field.total_cost);
@@ -270,17 +156,21 @@ impl Solver {
         }
     }
 
-    pub fn toward(&self, v: usize, direction: bool) -> usize {
-        if direction && v < self.n - 1 {
-            v + 1
-        } else if v > 0 {
-            v - 1
-        } else {
-            v
-        }
-    }
+    // 試掘を行う。
+    // pub fn boring(&self) {
+    //     visualize_boring()
+    // }
 }
 
+/// ボーリングを行うボーリングミル
+// struct BoringMill {
+//     cost: Vec<Vec<usize>>,
+// }
+
+// impl BoringMill {}
+
+/// メイン関数
+/// ../target/release/tester cargo run < tools/in/0000.txt > tools/out/0000.txt
 fn main() {
     let stdin = std::io::stdin();
     let mut source = LineSource::new(BufReader::new(stdin));
@@ -291,8 +181,8 @@ fn main() {
         w: usize,
         k: usize,
         c: usize,
-        ab: [(usize, usize); w],
-        cd: [(usize, usize); k],
+        ab: [(i64, i64); w],
+        cd: [(i64, i64); k],
     }
 
     let mut source_pos = Vec::new();
@@ -305,7 +195,47 @@ fn main() {
     }
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
+    // solver.boring();
     solver.solve();
 }
 
-// ../target/release/tester cargo run < tools/in/0000.txt > tools/out/0000.txt
+///
+/// 以下、考察用
+///
+#[cfg(feature = "local")]
+use svg::node::element::{path::Data, Path};
+
+#[cfg(not(feature = "local"))]
+#[allow(dead_code)]
+fn visualize_boring() {}
+
+#[cfg(feature = "local")]
+fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
+    Data::new()
+        .move_to((x0, y0))
+        .line_by((x1 as i64 - x0 as i64, 0))
+        .line_by((0, y1 as i64 - y0 as i64))
+        .line_by((x0 as i64 - x1 as i64, 0))
+        .close()
+}
+
+#[cfg(feature = "local")]
+#[allow(dead_code)]
+fn visualize_boring() {
+    let margin = 20;
+    let w = 200;
+    let d = w + 2 * margin;
+    let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
+    let back = Path::new().set("fill", "white").set(
+        "d",
+        create_rect_data(margin, margin, margin + w, margin + w),
+    );
+    doc = doc.add(back);
+    let text = svg::node::element::Text::new()
+        .set("x", margin)
+        .set("y", margin)
+        .set("font-size", 10)
+        .add(svg::node::Text::new("aaa"));
+    doc = doc.add(text);
+    svg::save("boring.svg", &doc).unwrap();
+}
