@@ -30,6 +30,7 @@ enum Response {
 }
 
 /// フィールド
+#[allow(unused)]
 struct Field {
     n: usize,
     w: usize,
@@ -171,9 +172,6 @@ impl Field {
             // eprintln!("{:?}", self.conn);
         }
     }
-
-    #[cfg(not(feature = "local"))]
-    pub fn svg(&self) -> SVG {}
 
     #[cfg(feature = "local")]
     pub fn svg(&self) -> SVG {
@@ -358,6 +356,10 @@ impl Solver {
         }
     }
 
+    #[cfg(not(feature = "local"))]
+    pub fn save_svg(&self) {}
+
+    #[cfg(feature = "local")]
     pub fn save_svg(&self) {
         let doc = self.field.svg();
         svg::save("field.svg", &doc).unwrap();
