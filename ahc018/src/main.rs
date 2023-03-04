@@ -133,7 +133,10 @@ impl Field {
         }
     }
 
-    pub fn dist(&self) -> Vec<Vec<usize>> {
+    pub fn dist<F>(&self, dist_fun: F) -> Vec<Vec<usize>>
+    where
+        F: Fn(Pos, Pos) -> i64,
+    {
         let mut dist = vec![vec![INF; self.w + self.k]; self.w + self.k];
         // 水源どうしの場所は、距離を0にする
         for i in 0..self.w {
@@ -146,7 +149,7 @@ impl Field {
         for i in 0..self.k {
             // 家同士の距離
             for j in 0..=i {
-                let d = self.house_pos[i].manhattan_dist(&self.house_pos[j]);
+                let d = dist_fun(self.house_pos[i], self.house_pos[j]);
                 let wi = self.w + i;
                 let wj = self.w + j;
                 dist[wi][wj] = d as usize;
@@ -154,7 +157,7 @@ impl Field {
             }
             // 水源と家との距離
             for l in 0..self.w {
-                let d = self.house_pos[i].manhattan_dist(&self.source_pos[l]);
+                let d = dist_fun(self.house_pos[i], self.source_pos[l]);
                 dist[self.w + i][l] = d as usize;
                 dist[l][self.w + i] = d as usize;
             }
@@ -162,10 +165,7 @@ impl Field {
         dist
     }
 
-    pub fn prim(&mut self) {
-        // まず、距離を調べる
-        let dist = self.dist();
-
+    pub fn prim(&mut self, dist: Vec<Vec<usize>>) {
         // Prim法
         let mut min_cost = vec![INF; self.w + self.k];
         let mut min_node = vec![INF; self.w + self.k];
@@ -288,10 +288,12 @@ struct BoringResult {
     ys: Vec<i64>,
     xs: Vec<i64>,
     sturdiness: Vec<Vec<usize>>,
+    dist: Vec<Vec<usize>>,
+    next: Vec<Vec<usize>>, // i から j への最短経路における i の一つ後の点
 }
 
 impl BoringResult {
-    fn new(n: usize, d: usize) -> Self {
+    pub fn new(n: usize, d: usize) -> Self {
         let mut ys: Vec<_> = (0_i64..n as i64).step_by(d).collect();
         if *ys.last().unwrap() != (n - 1) as i64 {
             ys.push((n - 1) as i64);
@@ -303,6 +305,8 @@ impl BoringResult {
         let ny = ys.len();
         let nx = xs.len();
         let sturdiness = vec![vec![INF; ys.len()]; xs.len()];
+        let dist = vec![vec![INF; ny * nx]; ny * nx];
+        let next = vec![vec![INF; ny * nx]; ny * nx];
         Self {
             n,
             ny,
@@ -310,6 +314,46 @@ impl BoringResult {
             ys,
             xs,
             sturdiness,
+            dist,
+            next,
+        }
+    }
+
+    pub fn calculate_dist(&mut self) {
+        let nn = self.ny * self.nx;
+        for i in 0..self.ny {
+            for j in 0..self.nx {
+                let c = i * self.ny + j;
+                self.dist[c][c] = 0;
+                if i != self.ny - 1 {
+                    self.dist[c][c + 1 * self.ny] =
+                        self.sturdiness[i][j] + self.sturdiness[i + 1][j];
+                    self.dist[c + 1 * self.ny][c] = self.dist[c][c + 1 * self.ny];
+                }
+                if j != self.nx - 1 {
+                    self.dist[c][c + 1] = self.sturdiness[i][j] + self.sturdiness[i][j + 1];
+                    self.dist[c + 1][c] = self.dist[c][c + 1];
+                }
+            }
+        }
+
+        // ワーシャルフロイド
+        for i in 0..nn {
+            for j in 0..nn {
+                self.next[i][j] = j;
+            }
+        }
+
+        for k in 0..nn {
+            for i in 0..nn {
+                for j in 0..nn {
+                    let d = self.dist[i][k] + self.dist[k][j];
+                    if d < self.dist[i][j] {
+                        self.dist[i][j] = d;
+                        self.next[i][j] = self.next[i][k];
+                    }
+                }
+            }
         }
     }
 
@@ -390,7 +434,8 @@ impl Solver {
 
     pub fn solve(&mut self) {
         // プリム法で探索
-        self.field.prim();
+        let dist = self.field.dist(|px, py| px.manhattan_dist(&py));
+        self.field.prim(dist);
         for i in 0..self.k {
             let goal = if self.field.conn[i] < self.w {
                 self.field.source_pos[self.field.conn[i]]
@@ -511,6 +556,7 @@ fn main() {
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
     solver.boring();
+    solver.boring_result.calculate_dist();
     solver.boring_result.save_svg();
     solver.solve();
     solver.field.save_svg();
