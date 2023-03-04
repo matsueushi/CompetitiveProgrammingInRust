@@ -56,8 +56,8 @@ def read_score(path):
 
 cost = read_score("./tools/score_best.txt")
 new_cost = read_score("./tools/score.txt")
-sns.histplot(cost)
-sns.histplot(new_cost)
+sns.distplot(cost)
+sns.distplot(new_cost)
 
 
 # %%

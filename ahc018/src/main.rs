@@ -116,7 +116,7 @@ impl Field {
         let mut min_node = vec![INF; self.w + self.k];
         let mut used = vec![false; self.w + self.k];
 
-        eprintln!("{:?}", dist);
+        // eprintln!("{:?}", dist);
 
         for i in 0..self.w {
             min_cost[i] = 0;
@@ -147,7 +147,7 @@ impl Field {
                 }
             }
 
-            eprintln!("{:?}", v);
+            // eprintln!("{:?}", v);
 
             // コストが最小になる点を追加し、距離を更新する
             if let Some(i) = v {
@@ -157,17 +157,18 @@ impl Field {
                 }
 
                 for u in 0..self.w + self.k {
-                    if dist[i][u] < min_cost[i] {
-                        min_cost[i] = dist[i][u];
-                        min_node[i] = u;
+                    // eprintln!("{} {} {} {}", i, u, dist[i][u], min_cost[u]);
+                    if dist[i][u] < min_cost[u] {
+                        min_cost[u] = dist[i][u];
+                        min_node[u] = i;
                     }
                 }
             } else {
                 break;
             }
-            eprintln!("{:?}", min_cost);
-            eprintln!("{:?}", min_node);
-            eprintln!("{:?}", self.conn);
+            // eprintln!("{:?}", min_cost);
+            // eprintln!("{:?}", min_node);
+            // eprintln!("{:?}", self.conn);
         }
     }
 
@@ -219,7 +220,7 @@ impl Field {
                 .set("x", x)
                 .set("y", y)
                 .set("font-size", font_size)
-                .set("font_family", "monospace")
+                .set("font_family", "sans")
                 .set("stroke", stroke)
                 .add(svg::node::Text::new(text))
         }
@@ -295,8 +296,15 @@ impl Solver {
     }
 
     pub fn solve(&mut self) {
-        for house in self.field.house_pos.clone() {
-            self.walk(house, self.field.source_pos[0]);
+        // プリム法で探索
+        self.field.prim();
+        for i in 0..self.k {
+            let goal = if self.field.conn[i] < self.w {
+                self.field.source_pos[self.field.conn[i]]
+            } else {
+                self.field.house_pos[self.field.conn[i] - self.w]
+            };
+            self.walk(self.field.house_pos[i], goal);
         }
     }
 
@@ -382,7 +390,6 @@ fn main() {
     }
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
-    solver.field.prim();
-    solver.save_svg();
     solver.solve();
+    // solver.save_svg();
 }
