@@ -2,7 +2,7 @@ use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
 #[cfg(feature = "local")]
-use svg::node::element::{path::Data, Path};
+use svg::node::element::{path::Data, Path, Text, SVG};
 use text_io::read;
 
 /// 場所を示す構造体。
@@ -29,6 +29,7 @@ enum Response {
 
 /// フィールド
 struct Field {
+    n: usize,
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     power: Vec<Vec<usize>>,    // 掘削するのに消費したパワー
@@ -36,9 +37,11 @@ struct Field {
     is_broken: Vec<Vec<bool>>, // すでにフィールドが壊れているか
 }
 
+#[allow(unused)]
 impl Field {
     pub fn new(n: usize, source_pos: Vec<Pos>, house_pos: Vec<Pos>) -> Self {
         Self {
+            n,
             source_pos,
             house_pos,
             power: vec![vec![0; n]; n],
@@ -70,6 +73,52 @@ impl Field {
             _ => Response::InValid,
         }
     }
+
+    #[cfg(not(feature = "local"))]
+    pub fn svg() {}
+
+    #[cfg(feature = "local")]
+    pub fn svg(&self) -> SVG {
+        const MARGIN: usize = 20;
+        use svg::node::Text;
+
+        fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
+            let y0 = y0 + MARGIN;
+            let x0 = x0 + MARGIN;
+            let y1 = y1 + MARGIN;
+            let x1 = x1 + MARGIN;
+            Data::new()
+                .move_to((x0, y0))
+                .line_by((x1 as i64 - x0 as i64, 0))
+                .line_by((0, y1 as i64 - y0 as i64))
+                .line_by((x0 as i64 - x1 as i64, 0))
+                .close()
+        }
+
+        fn create_text(
+            x: usize,
+            y: usize,
+            font_size: usize,
+            text: &str,
+        ) -> svg::node::element::Text {
+            svg::node::element::Text::new()
+                .set("x", x + MARGIN - font_size / 2)
+                .set("y", y + MARGIN + font_size / 2)
+                .set("font-size", font_size)
+                .add(svg::node::Text::new(text))
+        }
+
+        let w = 200;
+        let d = w + 2 * MARGIN;
+        let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
+        let back = Path::new()
+            .set("fill", "white")
+            .set("d", create_rect_data(0, 0, w, w));
+        doc = doc.add(back);
+        let text = create_text(0, 0, 10, "aaa");
+        doc = doc.add(text);
+        doc
+    }
 }
 
 /// ソルバー
@@ -82,6 +131,7 @@ struct Solver {
     field: Field,
 }
 
+#[allow(unused)]
 impl Solver {
     pub fn new(
         n: usize,
@@ -150,6 +200,11 @@ impl Solver {
             }
         }
     }
+
+    pub fn save_svg(&self) {
+        let doc = self.field.svg();
+        svg::save("field.svg", &doc).unwrap();
+    }
 }
 
 /// メイン関数
@@ -178,43 +233,6 @@ fn main() {
     }
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
+    solver.save_svg();
     solver.solve();
 }
-
-///
-/// 以下、考察用
-
-#[cfg(not(feature = "local"))]
-#[allow(dead_code)]
-fn visualize_boring() {}
-
-// #[cfg(feature = "local")]
-// fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
-//     Data::new()
-//         .move_to((x0, y0))
-//         .line_by((x1 as i64 - x0 as i64, 0))
-//         .line_by((0, y1 as i64 - y0 as i64))
-//         .line_by((x0 as i64 - x1 as i64, 0))
-//         .close()
-// }
-
-// #[cfg(feature = "local")]
-// #[allow(dead_code)]
-// fn visualize_boring() {
-//     let margin = 20;
-//     let w = 200;
-//     let d = w + 2 * margin;
-//     let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
-//     let back = Path::new().set("fill", "white").set(
-//         "d",
-//         create_rect_data(margin, margin, margin + w, margin + w),
-//     );
-//     doc = doc.add(back);
-//     let text = svg::node::element::Text::new()
-//         .set("x", margin)
-//         .set("y", margin)
-//         .set("font-size", 10)
-//         .add(svg::node::Text::new("aaa"));
-//     doc = doc.add(text);
-//     svg::save("boring.svg", &doc).unwrap();
-// }
