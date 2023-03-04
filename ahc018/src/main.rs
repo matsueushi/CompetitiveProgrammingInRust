@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused)]
+
 use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
@@ -79,7 +82,6 @@ enum Response {
 }
 
 /// フィールド
-#[allow(unused)]
 struct Field {
     n: usize,
     w: usize,
@@ -92,7 +94,6 @@ struct Field {
     conn: Vec<usize>,
 }
 
-#[allow(unused)]
 impl Field {
     pub fn new(n: usize, source_pos: Vec<Pos>, house_pos: Vec<Pos>) -> Self {
         let k = house_pos.len();
@@ -283,6 +284,7 @@ impl Field {
 /// ボーリング
 struct BoringResult {
     n: usize,
+    d: usize,
     ny: usize,
     nx: usize,
     ys: Vec<i64>,
@@ -309,6 +311,7 @@ impl BoringResult {
         let next = vec![vec![INF; ny * nx]; ny * nx];
         Self {
             n,
+            d,
             ny,
             nx,
             ys,
@@ -357,6 +360,59 @@ impl BoringResult {
         }
     }
 
+    pub fn near_best_idx(&self, pos: Pos) -> (usize, usize) {
+        let (mut bi, mut bj) = (0, 0);
+        let mut s = INF;
+        for i in 0..self.ny {
+            for j in 0..self.nx {
+                if (pos.y - self.ys[i]).abs() <= self.d as i64
+                    && (pos.x - self.xs[j]).abs() <= self.d as i64
+                    && self.sturdiness[i][j] < s
+                {
+                    s = self.sturdiness[i][j];
+                    (bi, bj) = (i, j);
+                }
+            }
+        }
+        (bi, bj)
+    }
+
+    pub fn idx_to_pos(&self, i: usize, j: usize) -> Pos {
+        Pos {
+            y: self.ys[i],
+            x: self.xs[j],
+        }
+    }
+
+    pub fn dist(&self, start: Pos, goal: Pos) -> i64 {
+        let (si, sj) = self.near_best_idx(start);
+        let (gi, gj) = self.near_best_idx(goal);
+        let ds = self.sturdiness[si][sj] as i64
+            * start.manhattan_dist(&Pos {
+                y: self.ys[si],
+                x: self.xs[sj],
+            });
+        let dg = self.sturdiness[gi][gj] as i64
+            * start.manhattan_dist(&Pos {
+                y: self.ys[gi],
+                x: self.xs[gj],
+            });
+        ds + (self.d * self.dist[si * self.ny + sj][gi * self.ny + gj]) as i64 + dg
+    }
+
+    pub fn shortest_path(&self, start_idx: (usize, usize), goal_idx: (usize, usize)) -> Vec<Pos> {
+        let mut start_idx = start_idx;
+        let mut path = Vec::new();
+        path.push(self.idx_to_pos(start_idx.0, start_idx.1));
+        while start_idx != goal_idx {
+            let next =
+                self.next[start_idx.0 * self.ny + start_idx.1][goal_idx.0 * self.ny + goal_idx.1];
+            start_idx = (next / self.ny, next % self.ny);
+            path.push(self.idx_to_pos(start_idx.0, start_idx.1));
+        }
+        path
+    }
+
     #[cfg(not(feature = "local"))]
     pub fn save_svg(&self) {}
 
@@ -400,7 +456,6 @@ impl BoringResult {
 }
 
 /// ソルバー
-#[allow(unused)]
 struct Solver {
     n: usize, // 土地のサイズ、 n = 200
     w: usize, // 水源の数、1 <= w <= 4
@@ -410,7 +465,6 @@ struct Solver {
     boring_result: BoringResult,
 }
 
-#[allow(unused)]
 impl Solver {
     pub fn new(
         n: usize,
@@ -434,15 +488,31 @@ impl Solver {
 
     pub fn solve(&mut self) {
         // プリム法で探索
-        let dist = self.field.dist(|px, py| px.manhattan_dist(&py));
+        // マンハッタン距離
+        // let dist = self.field.dist(|px, py| px.manhattan_dist(&py));
+        // 試掘の結果を使う
+        let dist = self.field.dist(|px, py| self.boring_result.dist(px, py));
+
         self.field.prim(dist);
         for i in 0..self.k {
+            let start = self.field.house_pos[i];
             let goal = if self.field.conn[i] < self.w {
                 self.field.source_pos[self.field.conn[i]]
             } else {
                 self.field.house_pos[self.field.conn[i] - self.w]
             };
-            self.walk(self.field.house_pos[i], goal);
+
+            let mut walk = Vec::new();
+            walk.push(start);
+            let start_near = self.boring_result.near_best_idx(start);
+            let goal_near = self.boring_result.near_best_idx(goal);
+            let mut shortest_path = self.boring_result.shortest_path(start_near, goal_near);
+            walk.append(&mut shortest_path);
+            walk.push(goal);
+
+            for i in 0..walk.len() - 1 {
+                self.walk(walk[i], walk[i + 1]);
+            }
         }
     }
 
@@ -557,7 +627,7 @@ fn main() {
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
     solver.boring();
     solver.boring_result.calculate_dist();
-    solver.boring_result.save_svg();
+    // solver.boring_result.save_svg();
     solver.solve();
-    solver.field.save_svg();
+    // solver.field.save_svg();
 }
