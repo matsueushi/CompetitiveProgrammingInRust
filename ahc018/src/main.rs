@@ -25,7 +25,7 @@ fn create_line(x1: i64, y1: i64, x2: i64, y2: i64) -> svg::node::element::Line {
         .set("x2", x2 as usize)
         .set("y2", y2 as usize)
         .set("stroke", "black")
-        .set("stroke-width", 1)
+        .set("stroke-width", 0.5)
 }
 
 #[cfg(feature = "local")]
@@ -213,8 +213,8 @@ impl Field {
 
                 for u in 0..self.w + self.k {
                     // eprintln!("{} {} {} {}", i, u, dist[i][u], min_cost[u]);
-                    if dist[i][u] < min_cost[u] {
-                        min_cost[u] = dist[i][u];
+                    if dist[u][i] < min_cost[u] {
+                        min_cost[u] = dist[u][i];
                         min_node[u] = i;
                     }
                 }
@@ -283,9 +283,12 @@ impl Field {
 /// ボーリング
 struct BoringResult {
     n: usize,
+    ny: usize,
+    nx: usize,
     ys: Vec<i64>,
     xs: Vec<i64>,
     sturdiness: Vec<Vec<usize>>,
+    conn: Vec<usize>, // Prim法の接続情報
 }
 
 impl BoringResult {
@@ -298,12 +301,73 @@ impl BoringResult {
         if *xs.last().unwrap() != (n - 1) as i64 {
             xs.push((n - 1) as i64);
         }
+        let ny = ys.len();
+        let nx = xs.len();
         let sturdiness = vec![vec![INF; ys.len()]; xs.len()];
+        let conn = vec![0; ny * nx];
         Self {
             n,
+            ny,
+            nx,
             ys,
             xs,
             sturdiness,
+            conn,
+        }
+    }
+
+    pub fn prim(&mut self) {
+        let nn = self.ny * self.nx;
+        let mut dist = vec![vec![INF; nn]; nn];
+
+        for i in 0..self.ny {
+            for j in 0..self.nx {
+                let c = i * self.ny + j;
+                dist[c][c] = 0;
+                if i != self.ny - 1 {
+                    dist[c][c + 1 * self.ny] = self.sturdiness[i][j] + self.sturdiness[i + 1][j];
+                    dist[c + 1 * self.ny][c] = dist[c][c + 1 * self.ny];
+                }
+                if j != self.nx - 1 {
+                    dist[c][c + 1] = self.sturdiness[i][j] + self.sturdiness[i][j + 1];
+                    dist[c + 1][c] = dist[c][c + 1];
+                }
+            }
+        }
+
+        let mut min_cost = vec![INF; nn];
+        let mut min_node = vec![INF; nn];
+        let mut used = vec![false; nn];
+        min_cost[0] = 0;
+        min_node[0] = 0;
+
+        loop {
+            let mut v = None;
+            for u in 0..nn {
+                if used[u] {
+                    continue;
+                }
+                if let Some(i) = v {
+                    if min_cost[u] < min_cost[i] {
+                        v = Some(u);
+                    }
+                } else {
+                    v = Some(u);
+                }
+            }
+
+            if let Some(i) = v {
+                used[i] = true;
+                self.conn[i] = min_node[i];
+                for u in 0..nn {
+                    if dist[u][i] < min_cost[u] {
+                        min_cost[u] = dist[u][i];
+                        min_node[u] = i;
+                    }
+                }
+            } else {
+                break;
+            }
         }
     }
 
@@ -317,8 +381,20 @@ impl BoringResult {
         let w = self.n;
         let d = w as i64 + 2 * MARGIN;
         let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
-        for i in 0..self.ys.len() {
-            for j in 0..self.xs.len() {
+
+        for i in 0..self.ny {
+            for j in 0..self.nx {
+                let u = self.conn[i * self.ny + j];
+                let (gi, gj) = (u / self.ny, u % self.ny);
+                let (sy, sx) = (self.ys[i] + MARGIN, self.xs[j] + MARGIN);
+                let (gy, gx) = (self.ys[gi] + MARGIN, self.xs[gj] + MARGIN);
+                let line = create_line(sx, sy, gx, gy);
+                doc = doc.add(line);
+            }
+        }
+
+        for i in 0..self.ny {
+            for j in 0..self.nx {
                 let text = create_text(
                     self.xs[j] + MARGIN,
                     self.ys[i] + MARGIN,
@@ -328,14 +404,14 @@ impl BoringResult {
                 );
                 doc = doc.add(text);
 
-                if i != self.ys.len() - 1 {
+                if i != self.ny - 1 {
                     let x = self.xs[j] + MARGIN;
                     let y = (self.ys[i] + self.ys[i + 1]) / 2 + MARGIN;
                     let s = (self.sturdiness[i][j] + self.sturdiness[i + 1][j]) / 2;
                     let text = create_text(x, y, 2, &s.to_string(), "blue");
                     doc = doc.add(text);
                 }
-                if j != self.xs.len() - 1 {
+                if j != self.nx - 1 {
                     let x = (self.xs[j] + self.xs[j + 1]) / 2 + MARGIN;
                     let y = self.ys[i] + MARGIN;
                     let s = (self.sturdiness[i][j] + self.sturdiness[i][j + 1]) / 2;
@@ -504,6 +580,7 @@ fn main() {
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
     solver.boring();
+    solver.boring_result.prim();
     solver.boring_result.save_svg();
     solver.solve();
     solver.field.save_svg();
