@@ -5,6 +5,8 @@ use std::process;
 use svg::node::element::{path::Data, Path, Text, SVG};
 use text_io::read;
 
+const INF: usize = std::usize::MAX / 2;
+
 /// 場所を示す構造体。
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 struct Pos {
@@ -30,23 +32,30 @@ enum Response {
 /// フィールド
 struct Field {
     n: usize,
+    w: usize,
+    k: usize,
     source_pos: Vec<Pos>,
     house_pos: Vec<Pos>,
     power: Vec<Vec<usize>>,    // 掘削するのに消費したパワー
     n_trial: Vec<Vec<usize>>,  // 掘削した回数
     is_broken: Vec<Vec<bool>>, // すでにフィールドが壊れているか
+    conn: Vec<usize>,
 }
 
 #[allow(unused)]
 impl Field {
     pub fn new(n: usize, source_pos: Vec<Pos>, house_pos: Vec<Pos>) -> Self {
+        let k = house_pos.len();
         Self {
             n,
+            w: source_pos.len(),
+            k,
             source_pos,
             house_pos,
             power: vec![vec![0; n]; n],
             n_trial: vec![vec![0; n]; n],
             is_broken: vec![vec![false; n]; n],
+            conn: vec![0; k],
         }
     }
 
@@ -74,8 +83,69 @@ impl Field {
         }
     }
 
+    pub fn prim(&mut self) {
+        // まず、距離を調べる
+        let mut dist = vec![vec![INF; self.w + self.k]; self.w + self.k];
+        // 水源どうしの場所は、距離を0にする
+        for i in 0..self.w {
+            for j in 0..=i {
+                dist[i][j] = 0;
+                dist[j][i] = 0;
+            }
+        }
+        dist[self.k][self.k] = 0;
+        for i in 0..self.k {
+            // 家同士の距離
+            for j in 0..i {
+                let d = self.house_pos[self.w + i].manhattan_dist(&self.house_pos[self.w + j]);
+                dist[self.w + i][self.w + j] = d as usize;
+                dist[self.w + j][self.w + i] = d as usize;
+            }
+            // 水源と家との距離
+            for l in 0..self.w {
+                let d = self.house_pos[self.w + i].manhattan_dist(&self.source_pos[l]);
+                dist[self.w + i][l] = d as usize;
+                dist[l][self.w + i] = d as usize;
+            }
+        }
+
+        // Prim法
+        let mut min_cost = vec![INF; self.k];
+
+        loop {
+            // X に属さない頂点からコストが最小になる点を探す
+            let mut v = None;
+            for u in 0..self.k {
+                if self.conn[u] < INF {
+                    continue;
+                }
+                match v {
+                    Some(i) => {
+                        if min_cost[u] < min_cost[i] {
+                            v = Some(u)
+                        }
+                    }
+                    None => v = Some(u),
+                }
+            }
+
+            // コストが最小になる点を追加し、距離を更新する
+            match v {
+                Some(i) => {
+                    for u in 0..self.w + self.k {
+                        if dist[u][i] < min_cost[i] {
+                            min_cost[i] = dist[u][i];
+                            self.conn[i] = u;
+                        }
+                    }
+                }
+                None => break,
+            }
+        }
+    }
+
     #[cfg(not(feature = "local"))]
-    pub fn svg() {}
+    pub fn svg(&self) -> SVG {}
 
     #[cfg(feature = "local")]
     pub fn svg(&self) -> SVG {
@@ -83,10 +153,6 @@ impl Field {
         use svg::node::Text;
 
         fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
-            let y0 = y0 + MARGIN;
-            let x0 = x0 + MARGIN;
-            let y1 = y1 + MARGIN;
-            let x1 = x1 + MARGIN;
             Data::new()
                 .move_to((x0, y0))
                 .line_by((x1 as i64 - x0 as i64, 0))
@@ -95,16 +161,32 @@ impl Field {
                 .close()
         }
 
-        fn create_text(
-            x: usize,
-            y: usize,
-            font_size: usize,
-            text: &str,
-        ) -> svg::node::element::Text {
+        fn create_line(x1: i64, y1: i64, x2: i64, y2: i64) -> svg::node::element::Line {
+            svg::node::element::Line::new()
+                .set("x1", x1 as usize)
+                .set("y1", y1 as usize)
+                .set("x2", x2 as usize)
+                .set("y2", y2 as usize)
+                .set("stroke", "black")
+                .set("stroke-width", 1)
+        }
+
+        fn create_circ(x: i64, y: i64, r: usize, stroke: &str) -> svg::node::element::Circle {
+            svg::node::element::Circle::new()
+                .set("cx", x as usize)
+                .set("cy", y as usize)
+                .set("r", r)
+                .set("stroke", stroke)
+                .set("stroke-width", 1)
+                .set("fill", "transparent")
+        }
+
+        fn create_text(x: i64, y: i64, font_size: usize, text: &str) -> svg::node::element::Text {
             svg::node::element::Text::new()
-                .set("x", x + MARGIN - font_size / 2)
-                .set("y", y + MARGIN + font_size / 2)
+                .set("x", x as usize + MARGIN - font_size / 2)
+                .set("y", y as usize + MARGIN + font_size / 2)
                 .set("font-size", font_size)
+                .set("font_family", "monospace")
                 .add(svg::node::Text::new(text))
         }
 
@@ -115,8 +197,34 @@ impl Field {
             .set("fill", "white")
             .set("d", create_rect_data(0, 0, w, w));
         doc = doc.add(back);
-        let text = create_text(0, 0, 10, "aaa");
-        doc = doc.add(text);
+        for pos in &self.source_pos {
+            let circ = create_circ(pos.x, pos.y, 5, "blue");
+            doc = doc.add(circ);
+        }
+        for pos in &self.house_pos {
+            let circ = create_circ(pos.x, pos.y, 5, "green");
+            doc = doc.add(circ);
+        }
+        for i in 0..self.k {
+            let start = &self.house_pos[i];
+            let goal = if self.conn[i] < self.w {
+                self.source_pos[self.conn[i]]
+            } else {
+                self.house_pos[self.conn[i] - self.w]
+            };
+            // 線を追加
+            let line = create_line(start.x, start.y, goal.x, goal.y);
+            doc = doc.add(line);
+            // 距離を追加
+            let d = start.manhattan_dist(&goal);
+            let text = create_text(
+                (start.x + goal.x) / 2,
+                (start.y + goal.y) / 2,
+                8,
+                &d.to_string(),
+            );
+            doc = doc.add(text);
+        }
         doc
     }
 }
