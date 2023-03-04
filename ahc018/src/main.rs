@@ -84,8 +84,7 @@ impl Field {
         }
     }
 
-    pub fn prim(&mut self) {
-        // まず、距離を調べる
+    pub fn dist(&self) -> Vec<Vec<usize>> {
         let mut dist = vec![vec![INF; self.w + self.k]; self.w + self.k];
         // 水源どうしの場所は、距離を0にする
         for i in 0..self.w {
@@ -111,6 +110,12 @@ impl Field {
                 dist[l][self.w + i] = d as usize;
             }
         }
+        dist
+    }
+
+    pub fn prim(&mut self) {
+        // まず、距離を調べる
+        let dist = self.dist();
 
         // Prim法
         let mut min_cost = vec![INF; self.w + self.k];
@@ -269,6 +274,28 @@ impl Field {
     }
 }
 
+/// ボーリング
+struct Boring {
+    ys: Vec<i64>,
+    xs: Vec<i64>,
+    sturdiness: Vec<Vec<usize>>,
+}
+
+impl Boring {
+    fn new(n: usize, d: usize) -> Self {
+        let mut ys: Vec<_> = (0_i64..n as i64).step_by(d).collect();
+        if *ys.last().unwrap() != (n - 1) as i64 {
+            ys.push((n - 1) as i64);
+        }
+        let mut xs: Vec<_> = (0_i64..n as i64).step_by(d).collect();
+        if *xs.last().unwrap() != (n - 1) as i64 {
+            xs.push((n - 1) as i64);
+        }
+        let sturdiness = vec![vec![INF; ys.len()]; xs.len()];
+        Self { ys, xs, sturdiness }
+    }
+}
+
 /// ソルバー
 #[allow(unused)]
 struct Solver {
@@ -331,6 +358,29 @@ impl Solver {
         }
     }
 
+    pub fn is_broken(&self, pos: Pos) -> bool {
+        self.field.is_broken[pos.y as usize][pos.x as usize]
+    }
+
+    pub fn boring(&mut self) {
+        let boring = Boring::new(self.n, 20);
+        // とりあえず50固定で5回まで掘ってみる
+        // 11 * 11 * (C + 50) * 5 = 30250 + 605 * C のコストが最大かかる
+        for i in 0..boring.ys.len() {
+            for j in 0..boring.xs.len() {
+                let mut n_try = 0;
+                let pos = Pos {
+                    y: boring.ys[i],
+                    x: boring.xs[j],
+                };
+                while !self.is_broken(pos) && n_try < 5 {
+                    n_try += 1;
+                    self.try_destruct(pos, 50);
+                }
+            }
+        }
+    }
+
     /// 掘るときの力
     pub fn destruct_power(&self, pos: Pos) -> usize {
         // 100固定
@@ -340,19 +390,23 @@ impl Solver {
     /// 掘る
     pub fn destruct(&mut self, pos: Pos) {
         let power = self.destruct_power(pos);
-        while !self.field.is_broken[pos.y as usize][pos.x as usize] {
-            let result = self.field.query(&pos, power);
-            match result {
-                Response::Finish => {
-                    // eprintln!("total_cost={}", self.field.total_cost);
-                    process::exit(0);
-                }
-                Response::InValid => {
-                    // eprintln!("invalid: y={}, x={}", y, x);
-                    process::exit(1);
-                }
-                _ => {}
+        while !self.is_broken(pos) {
+            self.try_destruct(pos, power);
+        }
+    }
+
+    pub fn try_destruct(&mut self, pos: Pos, power: usize) {
+        let result = self.field.query(&pos, power);
+        match result {
+            Response::Finish => {
+                // eprintln!("total_cost={}", self.field.total_cost);
+                process::exit(0);
             }
+            Response::InValid => {
+                // eprintln!("invalid: y={}, x={}", y, x);
+                process::exit(1);
+            }
+            _ => {}
         }
     }
 
@@ -392,6 +446,7 @@ fn main() {
     }
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
+    solver.boring();
     solver.solve();
-    // solver.save_svg();
+    solver.save_svg();
 }
