@@ -2,10 +2,59 @@ use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
 #[cfg(feature = "local")]
-use svg::node::element::{path::Data, Path, SVG};
+use svg::node::element::{path::Data, Path};
 use text_io::read;
 
 const INF: usize = std::usize::MAX / 2;
+
+#[cfg(feature = "local")]
+fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
+    Data::new()
+        .move_to((x0, y0))
+        .line_by((x1 as i64 - x0 as i64, 0))
+        .line_by((0, y1 as i64 - y0 as i64))
+        .line_by((x0 as i64 - x1 as i64, 0))
+        .close()
+}
+
+#[cfg(feature = "local")]
+fn create_line(x1: i64, y1: i64, x2: i64, y2: i64) -> svg::node::element::Line {
+    svg::node::element::Line::new()
+        .set("x1", x1 as usize)
+        .set("y1", y1 as usize)
+        .set("x2", x2 as usize)
+        .set("y2", y2 as usize)
+        .set("stroke", "black")
+        .set("stroke-width", 1)
+}
+
+#[cfg(feature = "local")]
+fn create_circ(x: i64, y: i64, r: usize, stroke: &str) -> svg::node::element::Circle {
+    svg::node::element::Circle::new()
+        .set("cx", x as usize)
+        .set("cy", y as usize)
+        .set("r", r)
+        .set("stroke", stroke)
+        .set("stroke-width", 1)
+        .set("fill", "transparent")
+}
+
+#[cfg(feature = "local")]
+fn create_text(
+    x: i64,
+    y: i64,
+    font_size: usize,
+    text: &str,
+    fill: &str,
+) -> svg::node::element::Text {
+    svg::node::element::Text::new()
+        .set("x", x)
+        .set("y", y)
+        .set("font-size", font_size)
+        .set("font_family", "sans")
+        .set("fill", fill)
+        .add(svg::node::Text::new(text))
+}
 
 /// 場所を示す構造体。
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
@@ -178,57 +227,14 @@ impl Field {
         }
     }
 
+    #[cfg(not(feature = "local"))]
+    pub fn save_svg(&self) {}
+
     #[cfg(feature = "local")]
-    pub fn svg(&self) -> SVG {
+    pub fn save_svg(&self) {
         const MARGIN: usize = 20;
-        use svg::node::Text;
 
-        fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
-            Data::new()
-                .move_to((x0, y0))
-                .line_by((x1 as i64 - x0 as i64, 0))
-                .line_by((0, y1 as i64 - y0 as i64))
-                .line_by((x0 as i64 - x1 as i64, 0))
-                .close()
-        }
-
-        fn create_line(x1: i64, y1: i64, x2: i64, y2: i64) -> svg::node::element::Line {
-            svg::node::element::Line::new()
-                .set("x1", x1 as usize)
-                .set("y1", y1 as usize)
-                .set("x2", x2 as usize)
-                .set("y2", y2 as usize)
-                .set("stroke", "black")
-                .set("stroke-width", 1)
-        }
-
-        fn create_circ(x: i64, y: i64, r: usize, stroke: &str) -> svg::node::element::Circle {
-            svg::node::element::Circle::new()
-                .set("cx", x as usize)
-                .set("cy", y as usize)
-                .set("r", r)
-                .set("stroke", stroke)
-                .set("stroke-width", 1)
-                .set("fill", "transparent")
-        }
-
-        fn create_text(
-            x: i64,
-            y: i64,
-            font_size: usize,
-            text: &str,
-            stroke: &str,
-        ) -> svg::node::element::Text {
-            svg::node::element::Text::new()
-                .set("x", x)
-                .set("y", y)
-                .set("font-size", font_size)
-                .set("font_family", "sans")
-                .set("stroke", stroke)
-                .add(svg::node::Text::new(text))
-        }
-
-        let w = 200;
+        let w = self.n;
         let d = w + 2 * MARGIN;
         let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
         let back = Path::new()
@@ -270,18 +276,19 @@ impl Field {
             );
             doc = doc.add(text);
         }
-        doc
+        svg::save("field.svg", &doc).unwrap();
     }
 }
 
 /// ボーリング
-struct Boring {
+struct BoringResult {
+    n: usize,
     ys: Vec<i64>,
     xs: Vec<i64>,
     sturdiness: Vec<Vec<usize>>,
 }
 
-impl Boring {
+impl BoringResult {
     fn new(n: usize, d: usize) -> Self {
         let mut ys: Vec<_> = (0_i64..n as i64).step_by(d).collect();
         if *ys.last().unwrap() != (n - 1) as i64 {
@@ -292,7 +299,52 @@ impl Boring {
             xs.push((n - 1) as i64);
         }
         let sturdiness = vec![vec![INF; ys.len()]; xs.len()];
-        Self { ys, xs, sturdiness }
+        Self {
+            n,
+            ys,
+            xs,
+            sturdiness,
+        }
+    }
+
+    #[cfg(not(feature = "local"))]
+    pub fn save_svg(&self) {}
+
+    #[cfg(feature = "local")]
+    pub fn save_svg(&self) {
+        const MARGIN: i64 = 20;
+
+        let w = self.n;
+        let d = w as i64 + 2 * MARGIN;
+        let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
+        for i in 0..self.ys.len() {
+            for j in 0..self.xs.len() {
+                let text = create_text(
+                    self.xs[j] + MARGIN,
+                    self.ys[i] + MARGIN,
+                    4,
+                    &self.sturdiness[i][j].to_string(),
+                    "black",
+                );
+                doc = doc.add(text);
+
+                if i != self.ys.len() - 1 {
+                    let x = self.xs[j] + MARGIN;
+                    let y = (self.ys[i] + self.ys[i + 1]) / 2 + MARGIN;
+                    let s = (self.sturdiness[i][j] + self.sturdiness[i + 1][j]) / 2;
+                    let text = create_text(x, y, 2, &s.to_string(), "blue");
+                    doc = doc.add(text);
+                }
+                if j != self.xs.len() - 1 {
+                    let x = (self.xs[j] + self.xs[j + 1]) / 2 + MARGIN;
+                    let y = self.ys[i] + MARGIN;
+                    let s = (self.sturdiness[i][j] + self.sturdiness[i][j + 1]) / 2;
+                    let text = create_text(x, y, 2, &s.to_string(), "blue");
+                    doc = doc.add(text);
+                }
+            }
+        }
+        svg::save("boring.svg", &doc).unwrap();
     }
 }
 
@@ -304,6 +356,7 @@ struct Solver {
     k: usize, // 家の数、 1 <= k <= 10
     c: usize, // 体力の消費, c in 1,2,4,8,16,32,64,128
     field: Field,
+    boring_result: BoringResult,
 }
 
 #[allow(unused)]
@@ -317,7 +370,15 @@ impl Solver {
         house_pos: Vec<Pos>,
     ) -> Self {
         let field = Field::new(n, source_pos, house_pos);
-        Self { n, w, k, c, field }
+        let boring_result = BoringResult::new(n, 20);
+        Self {
+            n,
+            w,
+            k,
+            c,
+            field,
+            boring_result,
+        }
     }
 
     pub fn solve(&mut self) {
@@ -363,19 +424,24 @@ impl Solver {
     }
 
     pub fn boring(&mut self) {
-        let boring = Boring::new(self.n, 20);
         // とりあえず50固定で5回まで掘ってみる
         // 11 * 11 * (C + 50) * 5 = 30250 + 605 * C のコストが最大かかる
-        for i in 0..boring.ys.len() {
-            for j in 0..boring.xs.len() {
+        for i in 0..self.boring_result.ys.len() {
+            for j in 0..self.boring_result.xs.len() {
                 let mut n_try = 0;
                 let pos = Pos {
-                    y: boring.ys[i],
-                    x: boring.xs[j],
+                    y: self.boring_result.ys[i],
+                    x: self.boring_result.xs[j],
                 };
                 while !self.is_broken(pos) && n_try < 5 {
                     n_try += 1;
                     self.try_destruct(pos, 50);
+                }
+                self.boring_result.sturdiness[i][j] =
+                    self.field.power[pos.y as usize][pos.x as usize];
+                if !self.is_broken(pos) {
+                    // 壊れていない
+                    self.boring_result.sturdiness[i][j] = 500;
                 }
             }
         }
@@ -409,15 +475,6 @@ impl Solver {
             _ => {}
         }
     }
-
-    #[cfg(not(feature = "local"))]
-    pub fn save_svg(&self) {}
-
-    #[cfg(feature = "local")]
-    pub fn save_svg(&self) {
-        let doc = self.field.svg();
-        svg::save("field.svg", &doc).unwrap();
-    }
 }
 
 /// メイン関数
@@ -447,6 +504,7 @@ fn main() {
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
     solver.boring();
+    solver.boring_result.save_svg();
     solver.solve();
-    solver.save_svg();
+    solver.field.save_svg();
 }
