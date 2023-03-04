@@ -2,7 +2,7 @@ use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
 #[cfg(feature = "local")]
-use svg::node::element::{path::Data, Path, Text, SVG};
+use svg::node::element::{path::Data, Path, SVG};
 use text_io::read;
 
 const INF: usize = std::usize::MAX / 2;
@@ -17,7 +17,7 @@ struct Pos {
 impl Pos {
     /// マンハッタン距離
     pub fn manhattan_dist(&self, other: &Self) -> i64 {
-        (self.y - other.y).abs() + (self.x - other.y).abs()
+        (self.y - other.y).abs() + (self.x - other.x).abs()
     }
 }
 
@@ -96,51 +96,78 @@ impl Field {
         dist[self.k][self.k] = 0;
         for i in 0..self.k {
             // 家同士の距離
-            for j in 0..i {
-                let d = self.house_pos[self.w + i].manhattan_dist(&self.house_pos[self.w + j]);
-                dist[self.w + i][self.w + j] = d as usize;
-                dist[self.w + j][self.w + i] = d as usize;
+            for j in 0..=i {
+                let d = self.house_pos[i].manhattan_dist(&self.house_pos[j]);
+                let wi = self.w + i;
+                let wj = self.w + j;
+                dist[wi][wj] = d as usize;
+                dist[wj][wi] = d as usize;
             }
             // 水源と家との距離
             for l in 0..self.w {
-                let d = self.house_pos[self.w + i].manhattan_dist(&self.source_pos[l]);
+                let d = self.house_pos[i].manhattan_dist(&self.source_pos[l]);
                 dist[self.w + i][l] = d as usize;
                 dist[l][self.w + i] = d as usize;
             }
         }
 
         // Prim法
-        let mut min_cost = vec![INF; self.k];
+        let mut min_cost = vec![INF; self.w + self.k];
+        let mut min_node = vec![INF; self.w + self.k];
+        let mut used = vec![false; self.w + self.k];
+
+        eprintln!("{:?}", dist);
+
+        for i in 0..self.w {
+            min_cost[i] = 0;
+            min_node[i] = i;
+            used[i] = true;
+            for j in 0..self.k {
+                let wj = self.w + j;
+                if dist[i][wj] < min_cost[wj] {
+                    min_cost[wj] = dist[i][wj];
+                    min_node[wj] = i;
+                }
+            }
+        }
 
         loop {
             // X に属さない頂点からコストが最小になる点を探す
             let mut v = None;
-            for u in 0..self.k {
-                if self.conn[u] < INF {
+            for u in 0..self.w + self.k {
+                if used[u] {
                     continue;
                 }
-                match v {
-                    Some(i) => {
-                        if min_cost[u] < min_cost[i] {
-                            v = Some(u)
-                        }
+                if let Some(i) = v {
+                    if min_cost[u] < min_cost[i] {
+                        v = Some(u);
                     }
-                    None => v = Some(u),
+                } else {
+                    v = Some(u);
                 }
             }
 
+            eprintln!("{:?}", v);
+
             // コストが最小になる点を追加し、距離を更新する
-            match v {
-                Some(i) => {
-                    for u in 0..self.w + self.k {
-                        if dist[u][i] < min_cost[i] {
-                            min_cost[i] = dist[u][i];
-                            self.conn[i] = u;
-                        }
+            if let Some(i) = v {
+                used[i] = true;
+                if i >= self.w {
+                    self.conn[i - self.w] = min_node[i];
+                }
+
+                for u in 0..self.w + self.k {
+                    if dist[i][u] < min_cost[i] {
+                        min_cost[i] = dist[i][u];
+                        min_node[i] = u;
                     }
                 }
-                None => break,
+            } else {
+                break;
             }
+            eprintln!("{:?}", min_cost);
+            eprintln!("{:?}", min_node);
+            eprintln!("{:?}", self.conn);
         }
     }
 
@@ -181,12 +208,19 @@ impl Field {
                 .set("fill", "transparent")
         }
 
-        fn create_text(x: i64, y: i64, font_size: usize, text: &str) -> svg::node::element::Text {
+        fn create_text(
+            x: i64,
+            y: i64,
+            font_size: usize,
+            text: &str,
+            stroke: &str,
+        ) -> svg::node::element::Text {
             svg::node::element::Text::new()
-                .set("x", x as usize + MARGIN - font_size / 2)
-                .set("y", y as usize + MARGIN + font_size / 2)
+                .set("x", x)
+                .set("y", y)
                 .set("font-size", font_size)
                 .set("font_family", "monospace")
+                .set("stroke", stroke)
                 .add(svg::node::Text::new(text))
         }
 
@@ -197,13 +231,19 @@ impl Field {
             .set("fill", "white")
             .set("d", create_rect_data(0, 0, w, w));
         doc = doc.add(back);
-        for pos in &self.source_pos {
+        for i in 0..self.w {
+            let pos = self.source_pos[i];
             let circ = create_circ(pos.x, pos.y, 5, "blue");
             doc = doc.add(circ);
+            let text = create_text(pos.x + 5, pos.y + 5, 8, &i.to_string(), "blue");
+            doc = doc.add(text);
         }
-        for pos in &self.house_pos {
+        for i in 0..self.k {
+            let pos = self.house_pos[i];
             let circ = create_circ(pos.x, pos.y, 5, "green");
             doc = doc.add(circ);
+            let text = create_text(pos.x + 5, pos.y + 5, 8, &(self.w + i).to_string(), "green");
+            doc = doc.add(text);
         }
         for i in 0..self.k {
             let start = &self.house_pos[i];
@@ -222,6 +262,7 @@ impl Field {
                 (start.y + goal.y) / 2,
                 8,
                 &d.to_string(),
+                "black",
             );
             doc = doc.add(text);
         }
@@ -341,6 +382,7 @@ fn main() {
     }
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
+    solver.field.prim();
     solver.save_svg();
     solver.solve();
 }
