@@ -1,39 +1,79 @@
-use petgraph::unionfind::UnionFind;
+#![allow(dead_code)]
+#![allow(unused)]
+
 use proconio::{input, source::line::LineSource};
 use std::io::BufReader;
 use std::process;
+#[cfg(feature = "local")]
+use svg::node::element::{path::Data, Path};
 use text_io::read;
 
-#[derive(Clone, Copy)]
+const INF: usize = std::usize::MAX / 2;
+
+#[cfg(feature = "local")]
+fn create_rect_data(y0: usize, x0: usize, y1: usize, x1: usize) -> Data {
+    Data::new()
+        .move_to((x0, y0))
+        .line_by((x1 as i64 - x0 as i64, 0))
+        .line_by((0, y1 as i64 - y0 as i64))
+        .line_by((x0 as i64 - x1 as i64, 0))
+        .close()
+}
+
+#[cfg(feature = "local")]
+fn create_line(x1: i64, y1: i64, x2: i64, y2: i64) -> svg::node::element::Line {
+    svg::node::element::Line::new()
+        .set("x1", x1 as usize)
+        .set("y1", y1 as usize)
+        .set("x2", x2 as usize)
+        .set("y2", y2 as usize)
+        .set("stroke", "black")
+        .set("stroke-width", 0.5)
+}
+
+#[cfg(feature = "local")]
+fn create_circ(x: i64, y: i64, r: usize, stroke: &str) -> svg::node::element::Circle {
+    svg::node::element::Circle::new()
+        .set("cx", x as usize)
+        .set("cy", y as usize)
+        .set("r", r)
+        .set("stroke", stroke)
+        .set("stroke-width", 1)
+        .set("fill", "transparent")
+}
+
+#[cfg(feature = "local")]
+fn create_text(
+    x: i64,
+    y: i64,
+    font_size: usize,
+    text: &str,
+    fill: &str,
+) -> svg::node::element::Text {
+    svg::node::element::Text::new()
+        .set("x", x)
+        .set("y", y)
+        .set("font-size", font_size)
+        .set("font_family", "sans")
+        .set("fill", fill)
+        .add(svg::node::Text::new(text))
+}
+
+/// 場所を示す構造体。
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 struct Pos {
-    y: usize,
-    x: usize,
-}
-
-impl Default for Pos {
-    fn default() -> Self {
-        Self { y: 0, x: 0 }
-    }
-}
-
-fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
+    y: i64,
+    x: i64,
 }
 
 impl Pos {
-    pub fn dist(&self, other: &Pos) -> usize {
-        abs_diff(self.x, other.x) + abs_diff(self.y, other.y)
-    }
-
-    pub fn dist2(&self, other: &Pos) -> usize {
-        abs_diff(abs_diff(self.x, other.x), abs_diff(self.y, other.y))
+    /// マンハッタン距離
+    pub fn manhattan_dist(&self, other: &Self) -> i64 {
+        (self.y - other.y).abs() + (self.x - other.x).abs()
     }
 }
 
+/// テスターから帰ってくるレスポンス
 enum Response {
     NotBroken,
     Broken,
@@ -41,36 +81,46 @@ enum Response {
     InValid,
 }
 
-#[allow(unused)]
+/// フィールド
 struct Field {
     n: usize,
-    c: usize,
-    is_broken: Vec<Vec<bool>>,
-    cost: Vec<Vec<i64>>,
-    n_trial: Vec<Vec<usize>>,
-    total_cost: usize,
+    w: usize,
+    k: usize,
+    source_pos: Vec<Pos>,
+    house_pos: Vec<Pos>,
+    power: Vec<Vec<usize>>,    // 掘削するのに消費したパワー
+    n_trial: Vec<Vec<usize>>,  // 掘削した回数
+    is_broken: Vec<Vec<bool>>, // すでにフィールドが壊れているか
+    conn: Vec<usize>,
 }
 
 impl Field {
-    pub fn new(n: usize, c: usize) -> Self {
+    pub fn new(n: usize, source_pos: Vec<Pos>, house_pos: Vec<Pos>) -> Self {
+        let k = house_pos.len();
         Self {
             n,
-            c,
-            is_broken: vec![vec![false; n]; n],
-            cost: vec![vec![0; n]; n],
+            w: source_pos.len(),
+            k,
+            source_pos,
+            house_pos,
+            power: vec![vec![0; n]; n],
             n_trial: vec![vec![0; n]; n],
-            total_cost: 0,
+            is_broken: vec![vec![false; n]; n],
+            conn: vec![0; k],
         }
     }
 
-    pub fn query(&mut self, y: usize, x: usize, power: usize) -> Response {
-        self.total_cost += power + self.c;
-        self.cost[y][x] += (power + self.c) as i64;
-        println!("{} {} {}", y, x, power);
+    /// 破壊クエリを実施する
+    pub fn query(&mut self, pos: &Pos, power: usize) -> Response {
+        let (y, x) = (pos.y as usize, pos.x as usize);
+        self.power[y][x] += power;
+        self.n_trial[y][x] += 1;
 
-        let r: i32 = read!();
+        // クエリ発行
+        println!("{} {} {}", pos.y, pos.x, power);
 
-        match r {
+        // 結果の取得
+        match read!() {
             0 => Response::NotBroken,
             1 => {
                 self.is_broken[y][x] = true;
@@ -83,20 +133,384 @@ impl Field {
             _ => Response::InValid,
         }
     }
+
+    pub fn dist<F>(&self, dist_fun: F) -> Vec<Vec<usize>>
+    where
+        F: Fn(Pos, Pos) -> i64,
+    {
+        let mut dist = vec![vec![INF; self.w + self.k]; self.w + self.k];
+        // 水源どうしの場所は、距離を0にする
+        for i in 0..self.w {
+            for j in 0..=i {
+                dist[i][j] = 0;
+                dist[j][i] = 0;
+            }
+        }
+        dist[self.k][self.k] = 0;
+        for i in 0..self.k {
+            // 家同士の距離
+            for j in 0..=i {
+                let d = dist_fun(self.house_pos[i], self.house_pos[j]);
+                let wi = self.w + i;
+                let wj = self.w + j;
+                dist[wi][wj] = d as usize;
+                dist[wj][wi] = d as usize;
+            }
+            // 水源と家との距離
+            for l in 0..self.w {
+                let d = dist_fun(self.house_pos[i], self.source_pos[l]);
+                dist[self.w + i][l] = d as usize;
+                dist[l][self.w + i] = d as usize;
+            }
+        }
+        dist
+    }
+
+    pub fn prim(&mut self, dist: Vec<Vec<usize>>) {
+        // Prim法
+        let mut min_cost = vec![INF; self.w + self.k];
+        let mut min_node = vec![INF; self.w + self.k];
+        let mut used = vec![false; self.w + self.k];
+
+        // eprintln!("{:?}", dist);
+
+        for i in 0..self.w {
+            min_cost[i] = 0;
+            min_node[i] = i;
+            used[i] = true;
+            for j in 0..self.k {
+                let wj = self.w + j;
+                if dist[i][wj] < min_cost[wj] {
+                    min_cost[wj] = dist[i][wj];
+                    min_node[wj] = i;
+                }
+            }
+        }
+
+        loop {
+            // X に属さない頂点からコストが最小になる点を探す
+            let mut v = None;
+            for u in 0..self.w + self.k {
+                if used[u] {
+                    continue;
+                }
+                if let Some(i) = v {
+                    if min_cost[u] < min_cost[i] {
+                        v = Some(u);
+                    }
+                } else {
+                    v = Some(u);
+                }
+            }
+
+            // eprintln!("{:?}", v);
+
+            // コストが最小になる点を追加し、距離を更新する
+            if let Some(i) = v {
+                used[i] = true;
+                if i >= self.w {
+                    self.conn[i - self.w] = min_node[i];
+                }
+
+                for u in 0..self.w + self.k {
+                    // eprintln!("{} {} {} {}", i, u, dist[i][u], min_cost[u]);
+                    if dist[u][i] < min_cost[u] {
+                        min_cost[u] = dist[u][i];
+                        min_node[u] = i;
+                    }
+                }
+            } else {
+                break;
+            }
+            // eprintln!("{:?}", min_cost);
+            // eprintln!("{:?}", min_node);
+            // eprintln!("{:?}", self.conn);
+        }
+    }
+
+    #[cfg(not(feature = "local"))]
+    pub fn save_svg(&self) {}
+
+    #[cfg(feature = "local")]
+    pub fn save_svg(&self) {
+        const MARGIN: usize = 20;
+
+        let w = self.n;
+        let d = w + 2 * MARGIN;
+        let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
+        let back = Path::new()
+            .set("fill", "white")
+            .set("d", create_rect_data(0, 0, w, w));
+        doc = doc.add(back);
+        for i in 0..self.w {
+            let pos = self.source_pos[i];
+            let circ = create_circ(pos.x, pos.y, 5, "blue");
+            doc = doc.add(circ);
+            let text = create_text(pos.x + 5, pos.y + 5, 8, &i.to_string(), "blue");
+            doc = doc.add(text);
+        }
+        for i in 0..self.k {
+            let pos = self.house_pos[i];
+            let circ = create_circ(pos.x, pos.y, 5, "green");
+            doc = doc.add(circ);
+            let text = create_text(pos.x + 5, pos.y + 5, 8, &(self.w + i).to_string(), "green");
+            doc = doc.add(text);
+        }
+        for i in 0..self.k {
+            let start = &self.house_pos[i];
+            let goal = if self.conn[i] < self.w {
+                self.source_pos[self.conn[i]]
+            } else {
+                self.house_pos[self.conn[i] - self.w]
+            };
+            // 線を追加
+            let line = create_line(start.x, start.y, goal.x, goal.y);
+            doc = doc.add(line);
+            // 距離を追加
+            let d = start.manhattan_dist(&goal);
+            let text = create_text(
+                (start.x + goal.x) / 2,
+                (start.y + goal.y) / 2,
+                8,
+                &d.to_string(),
+                "black",
+            );
+            doc = doc.add(text);
+        }
+        svg::save("field.svg", &doc).unwrap();
+    }
 }
 
-#[allow(unused)]
+/// ボーリング
+struct BoringResult {
+    n: usize,
+    d: usize,
+    ny: usize,
+    nx: usize,
+    ys: Vec<i64>,
+    xs: Vec<i64>,
+    sturdiness: Vec<Vec<usize>>,
+    dist: Vec<Vec<usize>>,
+    next: Vec<Vec<usize>>, // i から j への最短経路における i の一つ後の点
+}
+
+impl BoringResult {
+    pub fn new(n: usize, d: usize) -> Self {
+        let mut ys: Vec<_> = (0_i64..n as i64).step_by(d).collect();
+        if *ys.last().unwrap() != (n - 1) as i64 {
+            ys.push((n - 1) as i64);
+        }
+        let mut xs: Vec<_> = (0_i64..n as i64).step_by(d).collect();
+        if *xs.last().unwrap() != (n - 1) as i64 {
+            xs.push((n - 1) as i64);
+        }
+        let ny = ys.len();
+        let nx = xs.len();
+        let sturdiness = vec![vec![INF; ys.len()]; xs.len()];
+        let dist = vec![vec![INF; ny * nx]; ny * nx];
+        let next = vec![vec![INF; ny * nx]; ny * nx];
+        Self {
+            n,
+            d,
+            ny,
+            nx,
+            ys,
+            xs,
+            sturdiness,
+            dist,
+            next,
+        }
+    }
+
+    pub fn calculate_dist(&mut self) {
+        let nn = self.ny * self.nx;
+        for i in 0..self.ny {
+            for j in 0..self.nx {
+                let c = i * self.ny + j;
+                self.dist[c][c] = 0;
+                // y 方向に辺を張る
+                if i != self.ny - 1 {
+                    let dy = (self.ys[i + 1] - self.ys[i]) as usize;
+                    self.dist[c][c + 1 * self.ny] =
+                        dy * (self.sturdiness[i][j] + self.sturdiness[i + 1][j]);
+                    self.dist[c + 1 * self.ny][c] = self.dist[c][c + 1 * self.ny];
+                }
+                // x方向に辺を張る
+                if j != self.nx - 1 {
+                    let dx = (self.xs[j + 1] - self.xs[j]) as usize;
+                    self.dist[c][c + 1] = dx * (self.sturdiness[i][j] + self.sturdiness[i][j + 1]);
+                    self.dist[c + 1][c] = self.dist[c][c + 1];
+                }
+            }
+        }
+
+        // ワーシャルフロイド
+        for i in 0..nn {
+            for j in 0..nn {
+                self.next[i][j] = j;
+            }
+        }
+
+        for k in 0..nn {
+            for i in 0..nn {
+                for j in 0..nn {
+                    let d = self.dist[i][k] + self.dist[k][j];
+                    if d < self.dist[i][j] {
+                        self.dist[i][j] = d;
+                        self.next[i][j] = self.next[i][k];
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn near_idx(&self, pos: Pos) -> (Vec<usize>, Vec<usize>) {
+        let mut ys = Vec::new();
+        let mut xs = Vec::new();
+        for i in 0..self.ny {
+            if (pos.y - self.ys[i]).abs() <= self.d as i64 {
+                ys.push(i);
+            }
+        }
+        for j in 0..self.nx {
+            if (pos.x - self.xs[j]).abs() <= self.d as i64 {
+                xs.push(j);
+            }
+        }
+        (ys, xs)
+    }
+
+    pub fn idx_to_pos(&self, i: usize, j: usize) -> Pos {
+        Pos {
+            y: self.ys[i],
+            x: self.xs[j],
+        }
+    }
+
+    pub fn dist_along_grid(
+        &self,
+        start: Pos,
+        goal: Pos,
+        si: usize,
+        sj: usize,
+        gi: usize,
+        gj: usize,
+    ) -> i64 {
+        let ds = self.sturdiness[si][sj] as i64
+            * start.manhattan_dist(&Pos {
+                y: self.ys[si],
+                x: self.xs[sj],
+            });
+        let dg = self.sturdiness[gi][gj] as i64
+            * start.manhattan_dist(&Pos {
+                y: self.ys[gi],
+                x: self.xs[gj],
+            });
+        ds + self.dist[si * self.ny + sj][gi * self.ny + gj] as i64 + dg
+    }
+
+    pub fn dist(&self, start: Pos, goal: Pos) -> i64 {
+        let (sys, sxs) = self.near_idx(start);
+        let (gys, gxs) = self.near_idx(goal);
+
+        let mut d = INF as i64;
+        for si in &sys {
+            for sj in &sxs {
+                for gi in &gys {
+                    for gj in &gxs {
+                        d = d.min(self.dist_along_grid(start, goal, *si, *sj, *gi, *gj))
+                    }
+                }
+            }
+        }
+        d
+    }
+
+    pub fn shortest_path(&self, start: Pos, goal: Pos) -> Vec<Pos> {
+        let mut path = Vec::new();
+
+        let (sys, sxs) = self.near_idx(start);
+        let (gys, gxs) = self.near_idx(goal);
+
+        let mut d = INF as i64;
+        for si in &sys {
+            for sj in &sxs {
+                for gi in &gys {
+                    for gj in &gxs {
+                        let new_d = self.dist_along_grid(start, goal, *si, *sj, *gi, *gj);
+                        if new_d < d {
+                            d = new_d;
+                            path.clear();
+                            path.push(start);
+                            let mut si = *si;
+                            let mut sj = *sj;
+                            path.push(self.idx_to_pos(si, sj));
+                            while si != *gi || sj != *gj {
+                                let next = self.next[si * self.ny + sj][gi * self.ny + gj];
+                                si = next / self.ny;
+                                sj = next % self.ny;
+                                path.push(self.idx_to_pos(si, sj));
+                            }
+                            path.push(goal);
+                        }
+                    }
+                }
+            }
+        }
+
+        path
+    }
+
+    #[cfg(not(feature = "local"))]
+    pub fn save_svg(&self) {}
+
+    #[cfg(feature = "local")]
+    pub fn save_svg(&self) {
+        const MARGIN: i64 = 20;
+
+        let w = self.n;
+        let d = w as i64 + 2 * MARGIN;
+        let mut doc = svg::Document::new().set("viewBox", (0, 0, d, d));
+
+        for i in 0..self.ny {
+            for j in 0..self.nx {
+                let text = create_text(
+                    self.xs[j] + MARGIN,
+                    self.ys[i] + MARGIN,
+                    4,
+                    &self.sturdiness[i][j].to_string(),
+                    "black",
+                );
+                doc = doc.add(text);
+
+                if i != self.ny - 1 {
+                    let x = self.xs[j] + MARGIN;
+                    let y = (self.ys[i] + self.ys[i + 1]) / 2 + MARGIN;
+                    let s = (self.sturdiness[i][j] + self.sturdiness[i + 1][j]) / 2;
+                    let text = create_text(x, y, 2, &s.to_string(), "blue");
+                    doc = doc.add(text);
+                }
+                if j != self.nx - 1 {
+                    let x = (self.xs[j] + self.xs[j + 1]) / 2 + MARGIN;
+                    let y = self.ys[i] + MARGIN;
+                    let s = (self.sturdiness[i][j] + self.sturdiness[i][j + 1]) / 2;
+                    let text = create_text(x, y, 2, &s.to_string(), "blue");
+                    doc = doc.add(text);
+                }
+            }
+        }
+        svg::save("boring.svg", &doc).unwrap();
+    }
+}
+
+/// ソルバー
 struct Solver {
     n: usize, // 土地のサイズ、 n = 200
     w: usize, // 水源の数、1 <= w <= 4
     k: usize, // 家の数、 1 <= k <= 10
     c: usize, // 体力の消費, c in 1,2,4,8,16,32,64,128
-    source_pos: Vec<Pos>,
-    house_pos: Vec<Pos>,
     field: Field,
-    uf: UnionFind<usize>,
-    n_connected: usize,
-    base_power: usize,
+    boring_result: BoringResult,
 }
 
 impl Solver {
@@ -108,179 +522,128 @@ impl Solver {
         source_pos: Vec<Pos>,
         house_pos: Vec<Pos>,
     ) -> Self {
-        let mut uf = UnionFind::new(n * n + 1);
-        // ソースを接続しておく
-        for source in &source_pos {
-            uf.union(source.y * n + source.x, n * n);
-        }
+        let field = Field::new(n, source_pos, house_pos);
+        let boring_result = BoringResult::new(n, 20);
         Self {
             n,
             w,
             k,
             c,
-            source_pos,
-            house_pos,
-            field: Field::new(n, c),
-            uf,
-            n_connected: 0,
-            base_power: 100,
+            field,
+            boring_result,
         }
-    }
-
-    pub fn all_connected(&mut self) -> bool {
-        self.n_connected == self.k
-    }
-
-    pub fn field_index(&self, y: usize, x: usize) -> usize {
-        y * self.n + x
-    }
-
-    pub fn is_reachable_pos(&mut self, y: usize, x: usize) -> bool {
-        self.uf.equiv(self.field_index(y, x), self.n * self.n)
-    }
-
-    pub fn update_graph(&mut self, start_y: usize, start_x: usize, goal_y: usize, goal_x: usize) {
-        // アップデートする
-        self.uf.union(
-            self.field_index(start_y, start_x),
-            self.field_index(goal_y, goal_x),
-        );
-    }
-
-    pub fn connected(&mut self, i: usize) -> bool {
-        let Pos { y, x } = self.house_pos[i];
-        self.is_reachable_pos(y, x)
     }
 
     pub fn solve(&mut self) {
-        let mut connected_places = self.source_pos.clone();
-        while !self.all_connected() {
-            // 一番近いところを探す
+        // プリム法で探索
+        // マンハッタン距離
+        // let dist = self.field.dist(|px, py| px.manhattan_dist(&py));
+        // 試掘の結果を使う
+        let dist = self.field.dist(|px, py| self.boring_result.dist(px, py));
 
-            let mut from_idx = 0;
-            let mut to_idx = 0;
-            let mut dist = std::usize::MAX;
-            // 接続されている場所を見ていく
-            for i in 0..connected_places.len() {
-                // 家を見ていく
-                for j in 0..self.k {
-                    // 繋がっている
-                    if self.connected(j) {
-                        continue;
-                    }
-                    let new_dist = connected_places[i].dist(&self.house_pos[j])
-                        + (connected_places[i].dist2(&self.house_pos[j]) as f64 * 0.25) as usize;
-                    if new_dist < dist {
-                        dist = new_dist;
-                        from_idx = i;
-                        to_idx = j;
-                    }
-                }
+        self.field.prim(dist);
+        for i in 0..self.k {
+            let start = self.field.house_pos[i];
+            let goal = if self.field.conn[i] < self.w {
+                self.field.source_pos[self.field.conn[i]]
+            } else {
+                self.field.house_pos[self.field.conn[i] - self.w]
+            };
+
+            let path = self.boring_result.shortest_path(start, goal);
+            for i in 0..path.len() - 1 {
+                self.walk(path[i], path[i + 1]);
             }
-
-            self.mov(connected_places[from_idx], self.house_pos[to_idx]);
-            connected_places.push(self.house_pos[to_idx]);
-            self.n_connected += 1;
         }
     }
 
-    pub fn update_power(&mut self, cur_y: usize, cur_x: usize) {
-        // あまり効果は見られない。
-        // 力の調節よりも、場所の探索の方が重要そう。
-        let n_trial = self.field.n_trial[cur_y][cur_x] as i64;
-
-        if n_trial > 1 {
-            self.base_power = 100.max(self.c * 2);
-        } else {
-            self.base_power = ((self.base_power as f64) * 0.9).max(25.0).round() as usize;
-        }
-    }
-
-    pub fn mov(&mut self, start: Pos, goal: Pos) {
+    /// startからgoalに向かう。
+    pub fn walk(&mut self, start: Pos, goal: Pos) {
+        // コメント
         println!(
-            "# move from ({}, {}) to {} {}",
+            "# walk from ({} {}) to ({} {})",
             start.y, start.x, goal.y, goal.x
         );
 
-        let mut hist = Vec::new();
-        let mut cur_y = start.y;
-        let mut cur_x = start.x;
-        self.destruct(cur_y, cur_x);
-        self.update_graph(start.y, start.x, cur_y, cur_x);
-        hist.push((cur_y, cur_x));
-        while cur_y != goal.y || cur_x != goal.x {
-            let dy = cur_y as i64 - goal.y as i64;
-            let dx = cur_x as i64 - goal.x as i64;
-
-            self.update_power(cur_y, cur_x);
-
-            let direction_x = goal.x > cur_x;
-            let direction_y = goal.y > cur_y;
-
-            let len = hist.len();
-            if len == 1 {
-                if dy.abs() > dx.abs() {
-                    cur_y = self.toward(cur_y, direction_y);
-                } else {
-                    cur_x = self.toward(cur_x, direction_x);
-                }
+        let mut pos = start;
+        self.destruct(pos);
+        // y方向に進んでから、x方向に進む
+        while pos != goal {
+            let dy = (pos.y - goal.y).abs();
+            let dx = (pos.x - goal.x).abs();
+            if dy > dx && pos.y < goal.y {
+                pos.y += 1;
+            } else if dy > dx && pos.y > goal.y {
+                pos.y -= 1;
+            } else if pos.x < goal.x {
+                pos.x += 1;
             } else {
-                // ここで勾配を計算
-                let (prev_y, prev_x) = hist[len - 2];
-                let grad = self.field.cost[cur_y][cur_x] - self.field.cost[prev_y][prev_x];
-
-                if grad > 0 {
-                    // 勾配が正なので、避けていけないか
-                    if (dx != 0 && cur_y != prev_y) || dy == 0 {
-                        cur_x = self.toward(cur_x, direction_x);
-                    } else {
-                        cur_y = self.toward(cur_y, direction_y);
-                    }
-                } else {
-                    if (dy != 0 && cur_y != prev_y) || dx == 0 {
-                        // 同じ方向に進む
-                        cur_y = self.toward(cur_y, direction_y);
-                    } else {
-                        cur_x = self.toward(cur_x, direction_x);
-                    }
-                }
+                pos.x -= 1;
             }
-            // コストを計算
-            self.destruct(cur_y, cur_x);
-            self.update_graph(start.y, start.x, cur_y, cur_x);
-            hist.push((cur_y, cur_x));
+            self.destruct(pos);
         }
     }
 
-    pub fn destruct(&mut self, y: usize, x: usize) {
-        while !self.field.is_broken[y][x] {
-            self.field.n_trial[y][x] += 1;
-            let result = self.field.query(y, x, self.base_power);
-            match result {
-                Response::Finish => {
-                    // eprintln!("total_cost={}", self.field.total_cost);
-                    process::exit(0);
+    pub fn is_broken(&self, pos: Pos) -> bool {
+        self.field.is_broken[pos.y as usize][pos.x as usize]
+    }
+
+    pub fn boring(&mut self) {
+        // とりあえず50固定で5回まで掘ってみる
+        // 11 * 11 * (C + 50) * 5 = 30250 + 605 * C のコストが最大かかる
+        for i in 0..self.boring_result.ys.len() {
+            for j in 0..self.boring_result.xs.len() {
+                let mut n_try = 0;
+                let pos = Pos {
+                    y: self.boring_result.ys[i],
+                    x: self.boring_result.xs[j],
+                };
+                while !self.is_broken(pos) && n_try < 5 {
+                    n_try += 1;
+                    self.try_destruct(pos, 50);
                 }
-                Response::InValid => {
-                    // eprintln!("invalid: y={}, x={}", y, x);
-                    process::exit(1);
+                self.boring_result.sturdiness[i][j] =
+                    self.field.power[pos.y as usize][pos.x as usize];
+                if !self.is_broken(pos) {
+                    // 壊れていない
+                    self.boring_result.sturdiness[i][j] = 500;
                 }
-                _ => {}
             }
         }
     }
 
-    pub fn toward(&self, v: usize, direction: bool) -> usize {
-        if direction && v < self.n - 1 {
-            v + 1
-        } else if v > 0 {
-            v - 1
-        } else {
-            v
+    /// 掘るときの力
+    pub fn destruct_power(&self, pos: Pos) -> usize {
+        // 100固定
+        100
+    }
+
+    /// 掘る
+    pub fn destruct(&mut self, pos: Pos) {
+        let power = self.destruct_power(pos);
+        while !self.is_broken(pos) {
+            self.try_destruct(pos, power);
+        }
+    }
+
+    pub fn try_destruct(&mut self, pos: Pos, power: usize) {
+        let result = self.field.query(&pos, power);
+        match result {
+            Response::Finish => {
+                // eprintln!("total_cost={}", self.field.total_cost);
+                process::exit(0);
+            }
+            Response::InValid => {
+                // eprintln!("invalid: y={}, x={}", y, x);
+                process::exit(1);
+            }
+            _ => {}
         }
     }
 }
 
+/// メイン関数
+/// ../target/release/tester cargo run < tools/in/0000.txt > tools/out/0000.txt
 fn main() {
     let stdin = std::io::stdin();
     let mut source = LineSource::new(BufReader::new(stdin));
@@ -291,8 +654,8 @@ fn main() {
         w: usize,
         k: usize,
         c: usize,
-        ab: [(usize, usize); w],
-        cd: [(usize, usize); k],
+        ab: [(i64, i64); w],
+        cd: [(i64, i64); k],
     }
 
     let mut source_pos = Vec::new();
@@ -305,7 +668,9 @@ fn main() {
     }
 
     let mut solver = Solver::new(n, w, k, c, source_pos, house_pos);
+    solver.boring();
+    solver.boring_result.calculate_dist();
+    // solver.boring_result.save_svg();
     solver.solve();
+    // solver.field.save_svg();
 }
-
-// ../target/release/tester cargo run < tools/in/0000.txt > tools/out/0000.txt
