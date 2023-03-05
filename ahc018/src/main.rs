@@ -370,7 +370,8 @@ impl BoringResult {
                     && self.sturdiness[i][j] < s
                 {
                     s = self.sturdiness[i][j];
-                    (bi, bj) = (i, j);
+                    bi = i;
+                    bj = j;
                 }
             }
         }
@@ -400,9 +401,13 @@ impl BoringResult {
         ds + (self.d * self.dist[si * self.ny + sj][gi * self.ny + gj]) as i64 + dg
     }
 
-    pub fn shortest_path(&self, start_idx: (usize, usize), goal_idx: (usize, usize)) -> Vec<Pos> {
-        let mut start_idx = start_idx;
+    pub fn shortest_path(&self, start: Pos, goal: Pos) -> Vec<Pos> {
         let mut path = Vec::new();
+        path.push(start);
+        let start_idx = self.near_best_idx(start);
+        let goal_idx = self.near_best_idx(goal);
+
+        let mut start_idx = start_idx;
         path.push(self.idx_to_pos(start_idx.0, start_idx.1));
         while start_idx != goal_idx {
             let next =
@@ -410,6 +415,7 @@ impl BoringResult {
             start_idx = (next / self.ny, next % self.ny);
             path.push(self.idx_to_pos(start_idx.0, start_idx.1));
         }
+        path.push(goal);
         path
     }
 
@@ -502,16 +508,9 @@ impl Solver {
                 self.field.house_pos[self.field.conn[i] - self.w]
             };
 
-            let mut walk = Vec::new();
-            walk.push(start);
-            let start_near = self.boring_result.near_best_idx(start);
-            let goal_near = self.boring_result.near_best_idx(goal);
-            let mut shortest_path = self.boring_result.shortest_path(start_near, goal_near);
-            walk.append(&mut shortest_path);
-            walk.push(goal);
-
-            for i in 0..walk.len() - 1 {
-                self.walk(walk[i], walk[i + 1]);
+            let path = self.boring_result.shortest_path(start, goal);
+            for i in 0..path.len() - 1 {
+                self.walk(path[i], path[i + 1]);
             }
         }
     }
