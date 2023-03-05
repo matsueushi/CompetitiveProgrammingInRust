@@ -328,13 +328,17 @@ impl BoringResult {
             for j in 0..self.nx {
                 let c = i * self.ny + j;
                 self.dist[c][c] = 0;
+                // y 方向に辺を張る
                 if i != self.ny - 1 {
+                    let dy = (self.ys[i + 1] - self.ys[i]) as usize;
                     self.dist[c][c + 1 * self.ny] =
-                        self.sturdiness[i][j] + self.sturdiness[i + 1][j];
+                        dy * (self.sturdiness[i][j] + self.sturdiness[i + 1][j]);
                     self.dist[c + 1 * self.ny][c] = self.dist[c][c + 1 * self.ny];
                 }
+                // x方向に辺を張る
                 if j != self.nx - 1 {
-                    self.dist[c][c + 1] = self.sturdiness[i][j] + self.sturdiness[i][j + 1];
+                    let dx = (self.xs[j + 1] - self.xs[j]) as usize;
+                    self.dist[c][c + 1] = dx * (self.sturdiness[i][j] + self.sturdiness[i][j + 1]);
                     self.dist[c + 1][c] = self.dist[c][c + 1];
                 }
             }
@@ -402,7 +406,7 @@ impl BoringResult {
                 y: self.ys[gi],
                 x: self.xs[gj],
             });
-        ds + (self.d * self.dist[si * self.ny + sj][gi * self.ny + gj]) as i64 + dg
+        ds + self.dist[si * self.ny + sj][gi * self.ny + gj] as i64 + dg
     }
 
     pub fn dist(&self, start: Pos, goal: Pos) -> i64 {
@@ -557,7 +561,7 @@ impl Solver {
     pub fn walk(&mut self, start: Pos, goal: Pos) {
         // コメント
         println!(
-            "# waok from ({} {}) to ({} {})",
+            "# walk from ({} {}) to ({} {})",
             start.y, start.x, goal.y, goal.x
         );
 
@@ -565,9 +569,11 @@ impl Solver {
         self.destruct(pos);
         // y方向に進んでから、x方向に進む
         while pos != goal {
-            if pos.y < goal.y {
+            let dy = (pos.y - goal.y).abs();
+            let dx = (pos.x - goal.x).abs();
+            if dy > dx && pos.y < goal.y {
                 pos.y += 1;
-            } else if pos.y > goal.y {
+            } else if dy > dx && pos.y > goal.y {
                 pos.y -= 1;
             } else if pos.x < goal.x {
                 pos.x += 1;
