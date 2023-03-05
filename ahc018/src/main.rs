@@ -360,22 +360,20 @@ impl BoringResult {
         }
     }
 
-    pub fn near_best_idx(&self, pos: Pos) -> (usize, usize) {
-        let (mut bi, mut bj) = (0, 0);
-        let mut s = INF;
+    pub fn near_idx(&self, pos: Pos) -> (Vec<usize>, Vec<usize>) {
+        let mut ys = Vec::new();
+        let mut xs = Vec::new();
         for i in 0..self.ny {
-            for j in 0..self.nx {
-                if (pos.y - self.ys[i]).abs() <= self.d as i64
-                    && (pos.x - self.xs[j]).abs() <= self.d as i64
-                    && self.sturdiness[i][j] < s
-                {
-                    s = self.sturdiness[i][j];
-                    bi = i;
-                    bj = j;
-                }
+            if (pos.y - self.ys[i]).abs() <= self.d as i64 {
+                ys.push(i);
             }
         }
-        (bi, bj)
+        for j in 0..self.nx {
+            if (pos.x - self.xs[j]).abs() <= self.d as i64 {
+                xs.push(j);
+            }
+        }
+        (ys, xs)
     }
 
     pub fn idx_to_pos(&self, i: usize, j: usize) -> Pos {
@@ -385,9 +383,15 @@ impl BoringResult {
         }
     }
 
-    pub fn dist(&self, start: Pos, goal: Pos) -> i64 {
-        let (si, sj) = self.near_best_idx(start);
-        let (gi, gj) = self.near_best_idx(goal);
+    pub fn dist_along_grid(
+        &self,
+        start: Pos,
+        goal: Pos,
+        si: usize,
+        sj: usize,
+        gi: usize,
+        gj: usize,
+    ) -> i64 {
         let ds = self.sturdiness[si][sj] as i64
             * start.manhattan_dist(&Pos {
                 y: self.ys[si],
@@ -401,21 +405,55 @@ impl BoringResult {
         ds + (self.d * self.dist[si * self.ny + sj][gi * self.ny + gj]) as i64 + dg
     }
 
+    pub fn dist(&self, start: Pos, goal: Pos) -> i64 {
+        let (sys, sxs) = self.near_idx(start);
+        let (gys, gxs) = self.near_idx(goal);
+
+        let mut d = INF as i64;
+        for si in &sys {
+            for sj in &sxs {
+                for gi in &gys {
+                    for gj in &gxs {
+                        d = d.min(self.dist_along_grid(start, goal, *si, *sj, *gi, *gj))
+                    }
+                }
+            }
+        }
+        d
+    }
+
     pub fn shortest_path(&self, start: Pos, goal: Pos) -> Vec<Pos> {
         let mut path = Vec::new();
-        path.push(start);
-        let start_idx = self.near_best_idx(start);
-        let goal_idx = self.near_best_idx(goal);
 
-        let mut start_idx = start_idx;
-        path.push(self.idx_to_pos(start_idx.0, start_idx.1));
-        while start_idx != goal_idx {
-            let next =
-                self.next[start_idx.0 * self.ny + start_idx.1][goal_idx.0 * self.ny + goal_idx.1];
-            start_idx = (next / self.ny, next % self.ny);
-            path.push(self.idx_to_pos(start_idx.0, start_idx.1));
+        let (sys, sxs) = self.near_idx(start);
+        let (gys, gxs) = self.near_idx(goal);
+
+        let mut d = INF as i64;
+        for si in &sys {
+            for sj in &sxs {
+                for gi in &gys {
+                    for gj in &gxs {
+                        let new_d = self.dist_along_grid(start, goal, *si, *sj, *gi, *gj);
+                        if new_d < d {
+                            d = new_d;
+                            path.clear();
+                            path.push(start);
+                            let mut si = *si;
+                            let mut sj = *sj;
+                            path.push(self.idx_to_pos(si, sj));
+                            while si != *gi || sj != *gj {
+                                let next = self.next[si * self.ny + sj][gi * self.ny + gj];
+                                si = next / self.ny;
+                                sj = next % self.ny;
+                                path.push(self.idx_to_pos(si, sj));
+                            }
+                            path.push(goal);
+                        }
+                    }
+                }
+            }
         }
-        path.push(goal);
+
         path
     }
 
