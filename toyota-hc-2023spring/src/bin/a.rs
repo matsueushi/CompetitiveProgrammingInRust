@@ -10,19 +10,17 @@ struct Cargo {
     w: usize,
     h: usize,
     d: usize,
-    a: usize,
     this_side: bool,
     fragile: bool,
     state: usize,
 }
 
 impl Cargo {
-    pub fn new(w: usize, h: usize, d: usize, a: usize, this_side: bool, fragile: bool) -> Self {
+    pub fn new(w: usize, h: usize, d: usize, this_side: bool, fragile: bool) -> Self {
         Self {
             w,
             h,
             d,
-            a,
             this_side,
             fragile,
             state: 0,
@@ -44,16 +42,42 @@ impl Cargo {
         }
     }
 
+    pub fn xw(&self) -> usize {
+        match self.state {
+            0 => self.w,
+            1 => self.h,
+            2 => self.d,
+            3 => self.h,
+            4 => self.d,
+            _ => self.w,
+        }
+    }
+
+    pub fn xh(&self) -> usize {
+        match self.state {
+            0 => self.h,
+            1 => self.w,
+            2 => self.h,
+            3 => self.d,
+            4 => self.w,
+            _ => self.d,
+        }
+    }
+
+    pub fn xd(&self) -> usize {
+        match self.state {
+            0 => self.d,
+            1 => self.d,
+            2 => self.w,
+            3 => self.w,
+            4 => self.h,
+            _ => self.h,
+        }
+    }
+
     /// 荷物が占める領域
     pub fn space(&self) -> (usize, usize, usize) {
-        match self.state {
-            0 => (self.w, self.h, self.d),
-            1 => (self.h, self.w, self.d),
-            2 => (self.d, self.h, self.w),
-            3 => (self.h, self.d, self.w),
-            4 => (self.d, self.w, self.h),
-            _ => (self.w, self.d, self.h),
-        }
+        (self.xw(), self.xh(), self.xd())
     }
 }
 
@@ -94,72 +118,73 @@ impl Plate {
     }
 
     pub fn allocate(&self, cargo: &Cargo) -> Option<AllocResult> {
-        if self.fragile || cargo.w > self.w || cargo.h > self.h {
+        let (cw, ch, cd) = cargo.space();
+        if self.fragile || cw > self.w || ch > self.h {
             return None;
         }
         let mut plates = Vec::new();
         plates.push(Plate {
             x: self.x,
             y: self.y,
-            z: self.z + cargo.d,
-            w: cargo.w,
-            h: cargo.h,
+            z: self.z + cd,
+            w: cw,
+            h: ch,
             fragile: cargo.fragile,
         });
 
-        if cargo.w == self.w && cargo.h < self.h {
+        if cw == self.w && ch < self.h {
             plates.push(Plate {
                 x: self.x,
-                y: self.y + cargo.h,
+                y: self.y + ch,
                 z: self.z,
                 w: self.w,
-                h: self.h - cargo.h,
+                h: self.h - ch,
                 fragile: self.fragile,
             });
-        } else if cargo.w < self.w && cargo.h == self.h {
+        } else if cw < self.w && ch == self.h {
             plates.push(Plate {
-                x: self.x + cargo.w,
+                x: self.x + cw,
                 y: self.y,
                 z: self.z,
-                w: self.w - cargo.h,
+                w: self.w - ch,
                 h: self.h,
                 fragile: self.fragile,
             });
-        } else if cargo.w < self.w && cargo.h < self.h {
-            if (self.w - cargo.w) < (self.h - cargo.h) {
+        } else if cw < self.w && ch < self.h {
+            if (self.w - cw) < (self.h - ch) {
                 /// 横に切る
                 plates.push(Plate {
-                    x: self.x + cargo.w,
+                    x: self.x + cw,
                     y: self.y,
                     z: self.z,
-                    w: self.w - cargo.w,
-                    h: cargo.h,
+                    w: self.w - cw,
+                    h: ch,
                     fragile: self.fragile,
                 });
                 plates.push(Plate {
                     x: self.x,
-                    y: self.y + cargo.h,
+                    y: self.y + ch,
                     z: self.z,
-                    w: cargo.w,
-                    h: self.h - cargo.h,
+                    w: cw,
+                    h: self.h - ch,
                     fragile: self.fragile,
                 })
             } else {
                 // 縦に切る
                 plates.push(Plate {
-                    x: self.x + cargo.w,
+                    x: self.x + cw,
                     y: self.y,
                     z: self.z,
-                    w: self.w - cargo.w,
+                    w: self.w - cw,
                     h: self.h,
                     fragile: self.fragile,
                 });
                 plates.push(Plate {
                     x: self.x,
-                    y: cargo.h,
+                    y: ch,
                     z: self.z,
                     w: self.w,
-                    h: self.h - cargo.h,
+                    h: self.h - ch,
                     fragile: self.fragile,
                 })
             }
@@ -173,7 +198,7 @@ impl Plate {
             }
             cost
         };
-        Some(AllocResult { cost: 0, plates })
+        Some(AllocResult { cost, plates })
     }
 }
 
@@ -236,7 +261,9 @@ fn main() {
 
     let mut cargos = Vec::new();
     for (h, w, d, a, f, g) in cgs {
-        cargos.push(Cargo::new(h, w, d, a, f == "Y", g == "Y"));
+        for _ in 0..a {
+            cargos.push(Cargo::new(h, w, d, f != "Y", g != "Y"));
+        }
     }
 
     let mut solver = Solver { w, h, b, d, cargos };
@@ -244,3 +271,20 @@ fn main() {
 }
 
 // cargo run < tools/in/0000.txt > tools/out/0000.txt
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn allocate_cargo() {
+//         let plate = Plate {
+//             x: 0,
+//             y: 0,
+//             z: 0,
+//             w: 100,
+//             h: 100,
+//             fragile: true,
+//         };
+//     }
+// }
