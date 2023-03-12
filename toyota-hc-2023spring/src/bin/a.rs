@@ -1,5 +1,8 @@
 #![allow(unused)]
 
+use std::fs::{create_dir_all, File};
+use std::io::{BufWriter, Write};
+use std::path::Path;
 use std::{cmp::Ordering, collections::HashSet};
 
 use proconio::input;
@@ -32,14 +35,15 @@ impl Cargo {
         self.w * self.h * self.d
     }
 
-    /// 荷物を回転させる
-    pub fn rotate(&mut self) {
-        self.state += 1;
-        if self.this_side {
-            self.state = self.state % 2;
-        } else {
-            self.state = self.state % 6;
+    pub fn set_state(&mut self, state: usize) {
+        self.state = state
+    }
+
+    pub fn is_valid(&self) -> bool {
+        if self.this_side && self.state >= 2 {
+            return false;
         }
+        true
     }
 
     pub fn xw(&self) -> usize {
@@ -96,6 +100,7 @@ impl PartialOrd for Cargo {
 }
 
 /// 配置した時の結果
+#[derive(Debug)]
 struct AllocResult {
     cost: usize,
     plates: Vec<Plate>,
@@ -224,6 +229,37 @@ impl Container {
         });
         Self { w, h, b, d, objs }
     }
+
+    /// 高さ
+    pub fn heights(&self) -> Vec<Vec<usize>> {
+        let mut hs = vec![vec![0; self.h]; self.w];
+        for obj in &self.objs {
+            for i in 0..self.w {
+                for j in 0..self.h {
+                    let mut h = &hs[obj.x + i][obj.y + j];
+                    h = h.max(&obj.z);
+                }
+            }
+        }
+        hs
+    }
+
+    pub fn output_heights(&self) {
+        let output_dir = Path::new("tools/out");
+        create_dir_all(&output_dir);
+        let mut w = BufWriter::new(File::create(output_dir.join("height.csv")).unwrap());
+        let hs = self.heights();
+        for h in hs {
+            writeln!(
+                w,
+                "{}",
+                h.into_iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+        }
+    }
 }
 
 struct Solver {
@@ -240,9 +276,28 @@ impl Solver {
         let mut solution = vec![0; 1];
 
         self.cargos.sort();
-        for cargo in &self.cargos {
-            eprintln!("{:?}", cargo);
+        for cargo in &mut self.cargos {
+            let mut cost = std::usize::MAX;
+            for i in 0..6 {
+                cargo.set_state(i);
+                if !cargo.is_valid() {
+                    continue;
+                }
+                for item in &container.objs {
+                    eprintln!("{:?}", item);
+                    eprintln!("{:?}", cargo);
+                    if let Some(AllocResult { cost: c, plates }) = item.allocate(cargo) {
+                        eprintln!("result {:?}", plates);
+                        if c < cost {
+                            cost = c;
+                        }
+                    }
+                }
+            }
         }
+
+        // eprintln!("{:?}", container.heights());
+        // container.output_heights();
     }
 }
 
