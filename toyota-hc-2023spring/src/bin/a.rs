@@ -1,15 +1,18 @@
 #![allow(unused)]
 
+use std::fmt::format;
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use std::{cmp::Ordering, collections::HashSet};
+use std::{cmp::Ordering, collections::HashMap};
 
+use itertools::enumerate;
 use proconio::input;
 
 /// 荷物
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct Cargo {
+    num: usize,
     w: usize,
     h: usize,
     d: usize,
@@ -19,8 +22,9 @@ struct Cargo {
 }
 
 impl Cargo {
-    pub fn new(w: usize, h: usize, d: usize, this_side: bool, fragile: bool) -> Self {
+    pub fn new(num: usize, w: usize, h: usize, d: usize, this_side: bool, fragile: bool) -> Self {
         Self {
+            num,
             w,
             h,
             d,
@@ -213,31 +217,77 @@ struct Container {
     h: usize,
     b: usize,
     d: usize,
-    objs: HashSet<Plate>,
+    objs: HashMap<usize, Plate>,
+    max_id: usize,
 }
 
 impl Container {
     pub fn new(w: usize, h: usize, b: usize, d: usize) -> Self {
-        let mut objs = HashSet::new();
-        objs.insert(Plate {
-            x: 0,
-            y: 0,
-            z: 0,
+        let mut objs = HashMap::new();
+        objs.insert(
+            0,
+            Plate {
+                x: 0,
+                y: b,
+                z: 0,
+                w,
+                h: h - 2 * b,
+                fragile: false,
+            },
+        );
+        objs.insert(
+            1,
+            Plate {
+                x: b,
+                y: 0,
+                z: 0,
+                w: w - 2 * b,
+                h: b,
+                fragile: false,
+            },
+        );
+        objs.insert(
+            2,
+            Plate {
+                x: b,
+                y: h - b,
+                z: 0,
+                w: w - 2 * b,
+                h: b,
+                fragile: false,
+            },
+        );
+        Self {
             w,
             h,
-            fragile: false,
-        });
-        Self { w, h, b, d, objs }
+            b,
+            d,
+            objs,
+            max_id: 2,
+        }
+    }
+
+    pub fn plate_position(&self, id: usize) -> (usize, usize, usize) {
+        (self.objs[&id].x, self.objs[&id].y, self.objs[&id].z)
+    }
+
+    pub fn allocate(&mut self, id: usize, plates: Vec<Plate>) {
+        self.objs.remove(&id);
+        for plate in plates {
+            self.max_id += 1;
+            self.objs.insert(self.max_id, plate);
+        }
     }
 
     /// 高さ
     pub fn heights(&self) -> Vec<Vec<usize>> {
         let mut hs = vec![vec![0; self.h]; self.w];
-        for obj in &self.objs {
-            for i in 0..self.w {
-                for j in 0..self.h {
-                    let mut h = &hs[obj.x + i][obj.y + j];
-                    h = h.max(&obj.z);
+        for (_, obj) in &self.objs {
+            // eprintln!("{:?}", obj);
+            // eprintln!("{} {} {} {}", obj.x, self.w, obj.y, self.h);
+            for i in 0..obj.w {
+                for j in 0..obj.h {
+                    hs[obj.x + i][obj.y + j] = hs[obj.x + i][obj.y + j].max(obj.z);
                 }
             }
         }
@@ -245,9 +295,12 @@ impl Container {
     }
 
     pub fn output_heights(&self) {
+        eprintln!("{:?}", &self.objs);
         let output_dir = Path::new("tools/out");
         create_dir_all(&output_dir);
-        let mut w = BufWriter::new(File::create(output_dir.join("height.csv")).unwrap());
+
+        let file_name = format!("height_{}.csv", self.max_id);
+        let mut w = BufWriter::new(File::create(output_dir.join(file_name)).unwrap());
         let hs = self.heights();
         for h in hs {
             writeln!(
@@ -271,33 +324,43 @@ struct Solver {
 }
 
 impl Solver {
-    pub fn solve(&mut self) {
+    pub fn solve(&mut self) -> Vec<(usize, usize, usize, usize, usize)> {
         let mut container = Container::new(self.w, self.h, self.b, self.d);
-        let mut solution = vec![0; 1];
+        let mut solution = Vec::new();
 
         self.cargos.sort();
         for cargo in &mut self.cargos {
+            container.output_heights();
             let mut cost = std::usize::MAX;
+            let mut found = false;
+            let mut best_id = 0;
+            let mut best_plates = Vec::new();
+            let mut best_state = 0;
             for i in 0..6 {
                 cargo.set_state(i);
                 if !cargo.is_valid() {
                     continue;
                 }
-                for item in &container.objs {
-                    eprintln!("{:?}", item);
-                    eprintln!("{:?}", cargo);
+                for (id, item) in &container.objs {
                     if let Some(AllocResult { cost: c, plates }) = item.allocate(cargo) {
-                        eprintln!("result {:?}", plates);
                         if c < cost {
+                            found = true;
                             cost = c;
+                            best_id = *id;
+                            best_plates = plates;
                         }
                     }
                 }
             }
-        }
 
-        // eprintln!("{:?}", container.heights());
-        // container.output_heights();
+            if found {
+                cargo.set_state(best_state);
+                let (x, y, z) = container.plate_position(best_id);
+                solution.push((cargo.num, best_state, x, y, z));
+                container.allocate(best_id, best_plates);
+            }
+        }
+        solution
     }
 }
 
@@ -311,35 +374,21 @@ fn main() {
         cgs: [(usize, usize, usize, usize, String, String); m]
     }
 
-    eprintln!("m={} w={} h={} b={} d={}", m, w, h, b, d);
-    eprintln!("{:?}", cgs);
+    // eprintln!("m={} w={} h={} b={} d={}", m, w, h, b, d);
+    // eprintln!("{:?}", cgs);
 
     let mut cargos = Vec::new();
-    for (h, w, d, a, f, g) in cgs {
+    for (num, (h, w, d, a, f, g)) in enumerate(cgs) {
         for _ in 0..a {
-            cargos.push(Cargo::new(h, w, d, f != "Y", g != "Y"));
+            cargos.push(Cargo::new(num, h, w, d, f != "Y", g != "Y"));
         }
     }
 
     let mut solver = Solver { w, h, b, d, cargos };
-    solver.solve();
+    let solution = solver.solve();
+    for (p, r, x, y, z) in solution {
+        println!("{} {} {} {} {}", p, r, x, y, z);
+    }
 }
 
 // cargo run < tools/in/0000.txt > tools/out/0000.txt
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn allocate_cargo() {
-//         let plate = Plate {
-//             x: 0,
-//             y: 0,
-//             z: 0,
-//             w: 100,
-//             h: 100,
-//             fragile: true,
-//         };
-//     }
-// }

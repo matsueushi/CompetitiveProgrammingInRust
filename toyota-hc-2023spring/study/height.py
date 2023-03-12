@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 
 # %%
-with open("tools/out/height.csv") as f:
+with open("tools/out/height_14.csv") as f:
     reader = csv.reader(f, delimiter=",")
     data = []
     for row in reader:
