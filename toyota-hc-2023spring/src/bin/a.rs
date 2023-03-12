@@ -155,7 +155,7 @@ impl Plate {
                 x: self.x + cw,
                 y: self.y,
                 z: self.z,
-                w: self.w - ch,
+                w: self.w - cw,
                 h: self.h,
                 fragile: self.fragile,
             });
@@ -174,7 +174,7 @@ impl Plate {
                     x: self.x,
                     y: self.y + ch,
                     z: self.z,
-                    w: cw,
+                    w: self.w,
                     h: self.h - ch,
                     fragile: self.fragile,
                 })
@@ -190,7 +190,7 @@ impl Plate {
                 });
                 plates.push(Plate {
                     x: self.x,
-                    y: ch,
+                    y: self.y + ch,
                     z: self.z,
                     w: self.w,
                     h: self.h - ch,
@@ -330,7 +330,7 @@ impl Solver {
 
         self.cargos.sort();
         for cargo in &mut self.cargos {
-            container.output_heights();
+            // container.output_heights();
             let mut cost = std::usize::MAX;
             let mut found = false;
             let mut best_id = 0;
@@ -348,6 +348,7 @@ impl Solver {
                             cost = c;
                             best_id = *id;
                             best_plates = plates;
+                            best_state = i;
                         }
                     }
                 }
@@ -358,6 +359,8 @@ impl Solver {
                 let (x, y, z) = container.plate_position(best_id);
                 solution.push((cargo.num, best_state, x, y, z));
                 container.allocate(best_id, best_plates);
+            } else {
+                eprintln!("Solution not found");
             }
         }
         solution
@@ -380,7 +383,7 @@ fn main() {
     let mut cargos = Vec::new();
     for (num, (h, w, d, a, f, g)) in enumerate(cgs) {
         for _ in 0..a {
-            cargos.push(Cargo::new(num, h, w, d, f != "Y", g != "Y"));
+            cargos.push(Cargo::new(num, w, h, d, f != "Y", g != "Y"));
         }
     }
 
