@@ -198,15 +198,12 @@ impl Plate {
                 })
             }
         }
-        let cost = if plates.is_empty() {
-            0
-        } else {
-            let mut cost = std::usize::MAX;
-            for p in &plates {
-                cost = cost.min(p.area());
-            }
-            cost
-        };
+
+        let mut cost = std::usize::MAX;
+        for p in &plates {
+            cost = cost.min(p.area());
+        }
+
         Some(AllocResult { cost, plates })
     }
 }
@@ -219,6 +216,7 @@ struct Container {
     d: usize,
     objs: HashMap<usize, Plate>,
     max_id: usize,
+    turn: usize,
 }
 
 impl Container {
@@ -264,6 +262,7 @@ impl Container {
             d,
             objs,
             max_id: 2,
+            turn: 0,
         }
     }
 
@@ -272,6 +271,7 @@ impl Container {
     }
 
     pub fn allocate(&mut self, id: usize, plates: Vec<Plate>) {
+        self.turn += 1;
         self.objs.remove(&id);
         for plate in plates {
             self.max_id += 1;
@@ -295,11 +295,10 @@ impl Container {
     }
 
     pub fn output_heights(&self) {
-        eprintln!("{:?}", &self.objs);
+        eprintln!("{} {:?}", &self.turn, &self.objs);
         let output_dir = Path::new("tools/out");
         create_dir_all(&output_dir);
-
-        let file_name = format!("height_{}.csv", self.max_id);
+        let file_name = format!("height_{}.csv", self.turn);
         let mut w = BufWriter::new(File::create(output_dir.join(file_name)).unwrap());
         let hs = self.heights();
         for h in hs {
@@ -323,14 +322,13 @@ struct Solver {
     cargos: Vec<Cargo>,
 }
 
+type Solution = Vec<(usize, usize, usize, usize, usize)>;
+
 impl Solver {
-    pub fn solve(&mut self) -> Vec<(usize, usize, usize, usize, usize)> {
+    pub fn solve_for_cargo(&self, mut cargos: &mut Vec<Cargo>) -> Result<Solution, Solution> {
         let mut container = Container::new(self.w, self.h, self.b, self.d);
         let mut solution = Vec::new();
-
-        self.cargos.sort();
-        for cargo in &mut self.cargos {
-            // container.output_heights();
+        for cargo in cargos {
             let mut cost = std::usize::MAX;
             let mut found = false;
             let mut best_id = 0;
@@ -360,10 +358,23 @@ impl Solver {
                 solution.push((cargo.num, best_state, x, y, z));
                 container.allocate(best_id, best_plates);
             } else {
+                eprintln!("error: {:?}", cargo);
+                return Err(solution);
+            }
+            container.output_heights();
+        }
+        Ok(solution)
+    }
+
+    pub fn solve(&self) -> Solution {
+        let mut cargos = self.cargos.clone();
+        match self.solve_for_cargo(&mut cargos) {
+            Ok(solution) => solution,
+            Err(solution) => {
                 eprintln!("Solution not found");
+                solution
             }
         }
-        solution
     }
 }
 
