@@ -373,10 +373,13 @@ impl Solver {
     }
 
     pub fn solve(&self) -> Solution {
+        // 1.8秒粘る
+        let since = std::time::Instant::now();
+
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
         let mut cargos = self.cargos.clone();
         let mut sol = Vec::new();
-        for _ in 0..100 {
+        while since.elapsed().as_secs_f32() < 1.8 {
             match self.solve_for_cargo(&mut cargos) {
                 Ok(solution) => return solution,
                 Err(solution) => {
