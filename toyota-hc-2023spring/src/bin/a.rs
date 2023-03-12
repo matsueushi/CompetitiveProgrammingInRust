@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use rand::seq::SliceRandom;
+use rand::{Rng, SeedableRng};
 use std::fmt::format;
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
@@ -192,7 +194,7 @@ impl Plate {
                     x: self.x,
                     y: self.y + ch,
                     z: self.z,
-                    w: self.w,
+                    w: cw,
                     h: self.h - ch,
                     fragile: self.fragile,
                 })
@@ -200,9 +202,13 @@ impl Plate {
         }
 
         let mut cost = std::usize::MAX;
+        // let mut area = 0;
         for p in &plates {
             cost = cost.min(p.area());
+            // area += p.area();
         }
+        // eprintln!("{:?} {:?} {:?}", &self, &cargo, &plates);
+        // assert_eq!(area, self.area());
 
         Some(AllocResult { cost, plates })
     }
@@ -295,7 +301,7 @@ impl Container {
     }
 
     pub fn output_heights(&self) {
-        eprintln!("{} {:?}", &self.turn, &self.objs);
+        eprintln!("turn {}, {:?}", &self.turn, &self.objs);
         let output_dir = Path::new("tools/out");
         create_dir_all(&output_dir);
         let file_name = format!("height_{}.csv", self.turn);
@@ -358,23 +364,29 @@ impl Solver {
                 solution.push((cargo.num, best_state, x, y, z));
                 container.allocate(best_id, best_plates);
             } else {
-                eprintln!("error: {:?}", cargo);
+                // eprintln!("error: {:?}", cargo);
                 return Err(solution);
             }
-            container.output_heights();
+            // container.output_heights();
         }
         Ok(solution)
     }
 
     pub fn solve(&self) -> Solution {
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
         let mut cargos = self.cargos.clone();
-        match self.solve_for_cargo(&mut cargos) {
-            Ok(solution) => solution,
-            Err(solution) => {
-                eprintln!("Solution not found");
-                solution
+        let mut sol = Vec::new();
+        for _ in 0..100 {
+            match self.solve_for_cargo(&mut cargos) {
+                Ok(solution) => return solution,
+                Err(solution) => {
+                    // eprintln!("Solution not found");
+                    sol = solution;
+                }
             }
+            cargos.shuffle(&mut rng);
         }
+        sol // 暫定解を返す
     }
 }
 
