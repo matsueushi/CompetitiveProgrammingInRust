@@ -396,7 +396,7 @@ impl Solution {
         }
         // 正確ではない
         let mut p = 1000 + h;
-        if p > d {
+        if h > d {
             p += 1_000_000 + 1000 * overflow_vol;
         }
         p
@@ -450,9 +450,7 @@ impl Solver {
                     {
                         // 高さがdより大きい→コストを見る
                         // 高さがdより小さい→最高の高さがd以上またはコストを更新していたらok
-                        if (depth > self.d && c < cost)
-                            || (depth <= self.d && (max_depth > self.d || c < cost))
-                        {
+                        if depth < max_depth {
                             found = true;
                             max_depth = max_depth.min(depth);
                             cost = c;
