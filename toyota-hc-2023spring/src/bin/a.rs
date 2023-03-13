@@ -2,6 +2,7 @@
 
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
+use std::cmp::Reverse;
 use std::fmt;
 use std::fmt::format;
 use std::fs::{create_dir_all, File};
@@ -109,7 +110,7 @@ impl PartialOrd for Cargo {
 /// 配置した時の結果
 #[derive(Debug)]
 struct AllocResult {
-    height: usize,
+    depth: usize,
     cost: usize,
     plates: Vec<Plate>,
 }
@@ -213,7 +214,7 @@ impl Plate {
         // assert_eq!(area, self.area());
 
         Some(AllocResult {
-            height: self.z + cd,
+            depth: self.z + cd,
             cost,
             plates,
         })
@@ -284,7 +285,7 @@ impl Container {
                 1,
                 Plate {
                     x: 0,
-                    y: d,
+                    y: b,
                     z: 0,
                     w: b,
                     h: h - 2 * b,
@@ -430,7 +431,7 @@ impl Solver {
         let mut solution = Solution::new();
         for cargo in cargos {
             let mut found = false;
-            let mut max_height = std::usize::MAX;
+            let mut max_depth = std::usize::MAX;
             let mut cost = std::usize::MAX;
             let mut best_id = 0;
             let mut best_plates = Vec::new();
@@ -442,16 +443,18 @@ impl Solver {
                 }
                 for (id, item) in &container.objs {
                     if let Some(AllocResult {
-                        height,
+                        depth,
                         cost: c,
                         plates,
                     }) = item.allocate(cargo)
                     {
-                        // 高さがd以下に更新できる場合は無条件で更新する。
-                        // それ以外の場合はコストをみる
-                        if (height <= self.d && max_height > self.d) || c < cost {
+                        // 高さがdより大きい→コストを見る
+                        // 高さがdより小さい→最高の高さがd以上またはコストを更新していたらok
+                        if (depth > self.d && c < cost)
+                            || (depth <= self.d && (max_depth > self.d || c < cost))
+                        {
                             found = true;
-                            max_height = max_height.min(height);
+                            max_depth = max_depth.min(depth);
                             cost = c;
                             best_id = *id;
                             best_plates = plates;
@@ -483,6 +486,7 @@ impl Solver {
         let mut penalty = std::usize::MAX;
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
         let mut cargos = self.cargos.clone();
+        cargos.sort_by_key(|x| Reverse(x.volume()));
         let mut sol = Solution::new();
         while since.elapsed().as_secs_f32() < 1.8 {
             let seed = rng.gen_range(0, 2);
