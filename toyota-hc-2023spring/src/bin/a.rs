@@ -378,6 +378,24 @@ impl Solution {
         self.cargos.push(cargo);
     }
 
+    pub fn penalty(&self, d: usize) -> usize {
+        let mut h = 0;
+        let mut overflow_vol = 0;
+        for i in 0..self.positions.len() {
+            let nh = self.positions[i].2 + self.cargos[i].d;
+            h = h.max(nh);
+            if nh > d {
+                overflow_vol += self.cargos[i].volume();
+            }
+        }
+        // 正確ではない
+        let mut p = 1000 + h;
+        if p > d {
+            p += 1_000_000 + 1000 * overflow_vol;
+        }
+        p
+    }
+
     pub fn print_result(&self) {
         for i in 0..self.positions.len() {
             let (x, y, z) = self.positions[i];
@@ -447,16 +465,24 @@ impl Solver {
         // 1.8秒粘る
         let since = std::time::Instant::now();
 
+        let mut found = false;
+        let mut penalty = std::usize::MAX;
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
         let mut cargos = self.cargos.clone();
         let mut sol = Solution::new();
         while since.elapsed().as_secs_f32() < 1.8 {
             let seed = rng.gen_range(0, 2);
             match self.solve_for_cargo(&mut cargos, seed) {
-                Ok(solution) => return solution,
+                Ok(solution) => {
+                    found = true;
+                    if solution.penalty(self.d) < penalty {
+                        sol = solution;
+                    }
+                }
                 Err(solution) => {
-                    // eprintln!("Solution not found");
-                    sol = solution;
+                    if !found {
+                        sol = solution;
+                    }
                 }
             }
             cargos.shuffle(&mut rng);
