@@ -109,6 +109,7 @@ impl PartialOrd for Cargo {
 /// 配置した時の結果
 #[derive(Debug)]
 struct AllocResult {
+    height: usize,
     cost: usize,
     plates: Vec<Plate>,
 }
@@ -211,7 +212,11 @@ impl Plate {
         // eprintln!("{:?} {:?} {:?}", &self, &cargo, &plates);
         // assert_eq!(area, self.area());
 
-        Some(AllocResult { cost, plates })
+        Some(AllocResult {
+            height: self.z + cd,
+            cost,
+            plates,
+        })
     }
 }
 
@@ -424,8 +429,9 @@ impl Solver {
         let mut container = Container::new(self.w, self.h, self.b, self.d, seed);
         let mut solution = Solution::new();
         for cargo in cargos {
-            let mut cost = std::usize::MAX;
             let mut found = false;
+            let mut max_height = std::usize::MAX;
+            let mut cost = std::usize::MAX;
             let mut best_id = 0;
             let mut best_plates = Vec::new();
             let mut best_state = 0;
@@ -435,9 +441,17 @@ impl Solver {
                     continue;
                 }
                 for (id, item) in &container.objs {
-                    if let Some(AllocResult { cost: c, plates }) = item.allocate(cargo) {
-                        if c < cost {
+                    if let Some(AllocResult {
+                        height,
+                        cost: c,
+                        plates,
+                    }) = item.allocate(cargo)
+                    {
+                        // 高さがd以下に更新できる場合は無条件で更新する。
+                        // それ以外の場合はコストをみる
+                        if (height <= self.d && max_height > self.d) || c < cost {
                             found = true;
+                            max_height = max_height.min(height);
                             cost = c;
                             best_id = *id;
                             best_plates = plates;
