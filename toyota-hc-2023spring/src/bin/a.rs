@@ -96,7 +96,7 @@ impl Item {
     }
 
     fn rotate(&self) -> Option<Self> {
-        if (!self.flippable && self.orientation > 1) || self.orientation == 5 {
+        if (!self.flippable && self.orientation >= 1) || self.orientation == 5 {
             None
         } else {
             Some(Self {
@@ -414,6 +414,41 @@ impl Packer {
         }
     }
 
+    fn print(&self) {
+        for p in &self.packed {
+            p.print();
+        }
+    }
+
+    fn penalty(&self) -> usize {
+        let mut score = 1000;
+        // max height
+        let mut max_h = 0;
+        let mut overflow_vol = 0;
+        for p in &self.packed {
+            if p.is_block() {
+                continue;
+            }
+            let h = p.z_upper();
+            max_h = max_h.max(h);
+            if h > self.d {
+                overflow_vol += p.item.volume();
+            }
+        }
+        score += max_h;
+        for i in 0..self.packed.len() {
+            for j in i + 1..self.packed.len() {
+                if self.packed[i].item.id > self.packed[j].item.id {
+                    score += 1000;
+                }
+            }
+        }
+        if max_h > self.d {
+            score += 1_000_000 + 1000 * overflow_vol;
+        }
+        score
+    }
+
     fn pack_item(&mut self, vertex: &Position, item: &Item) -> Option<Placement> {
         // eprintln!("pack item {:?}", v);
         let mut item = Some(*item);
@@ -435,6 +470,7 @@ impl Packer {
     fn pack(&mut self, items: Vec<Item>) {
         let mut items = items;
         items.sort();
+        let mut success = true;
         for item in items {
             let vs = self.vertices.clone();
             // もっとも低くなるように積む
@@ -451,13 +487,14 @@ impl Packer {
             }
             if let Some(placement) = p {
                 self.put_item(placement);
+            } else {
+                success = false;
+                break;
             }
         }
-    }
 
-    fn print(&self) {
-        for p in &self.packed {
-            p.print();
+        if success {
+            eprintln!("success. score = {}", self.penalty());
         }
     }
 }
