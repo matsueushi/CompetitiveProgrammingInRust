@@ -4,6 +4,8 @@ const BLOCK: usize = 10000;
 
 use itertools::enumerate;
 use proconio::input;
+use rand::seq::SliceRandom;
+use rand::{Rng, SeedableRng};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -492,37 +494,52 @@ impl Packer {
     }
 
     fn pack(&mut self, items: Vec<Item>) -> Vec<Placement> {
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
+
         let mut items = items;
         items.sort();
 
-        let mut success = true;
-        for item in &items {
-            let vs = self.vertices.clone();
-            // もっとも低くなるように積む
-            let mut h = std::usize::MAX;
-            let mut p = None;
-            for v in vs {
-                if let Some(placement) = self.pack_item(&v, &item) {
-                    let nh = placement.z_upper();
-                    if nh < h {
-                        h = nh;
-                        p = Some(placement);
+        let mut best_penalty = std::usize::MAX;
+        let mut best_packed = Vec::new();
+
+        for _ in 0..1 {
+            let mut success = true;
+            for item in &items {
+                let vs = self.vertices.clone();
+                // もっとも低くなるように積む
+                let mut h = std::usize::MAX;
+                let mut p = None;
+                for v in vs {
+                    if let Some(placement) = self.pack_item(&v, &item) {
+                        let nh = placement.z_upper();
+                        if nh < h {
+                            h = nh;
+                            p = Some(placement);
+                        }
                     }
                 }
+                if let Some(placement) = p {
+                    self.put_item(placement);
+                } else {
+                    success = false;
+                    break;
+                }
             }
-            if let Some(placement) = p {
-                self.put_item(placement);
-            } else {
-                success = false;
-                break;
+
+            if success {
+                let penalty = self.penalty();
+                if penalty < best_penalty {
+                    best_penalty = penalty;
+                    std::mem::swap(&mut best_packed, &mut self.packed);
+                }
             }
+
+            self.packed.clear();
+            items.shuffle(&mut rng);
         }
 
-        if success {
-            eprintln!("success. score = {}", self.penalty());
-        }
-
-        Self::order_items(&self.packed)
+        eprintln!("success. score = {}", best_penalty);
+        Self::order_items(&best_packed)
     }
 }
 

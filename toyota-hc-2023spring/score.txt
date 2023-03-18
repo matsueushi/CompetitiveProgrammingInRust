@@ -1,109 +1,206 @@
-Penalty = 11900
-Penalty = 144128017365
-Penalty = 40665040030
-Penalty = 286586360070
+0000
 Penalty = 0
 荷物の総数が足りません (p = 0)
+0001
+Penalty = 67271023305
+0002
+Penalty = 49565
+0003
+Penalty = 104987243450
+0004
+Penalty = 171691572685
+0005
+Penalty = 29055
+0006
+Penalty = 73313020090
+0007
+Penalty = 56481557930
+0008
+Penalty = 1510
+0009
+Penalty = 7330
+0010
+Penalty = 60327030855
+0011
+Penalty = 76858038210
+0012
+Penalty = 88440
+0013
+Penalty = 44353040400
+0014
 Penalty = 0
 荷物の総数が足りません (p = 0)
-Penalty = 169778020210
-Penalty = 80286574355
-Penalty = 3365
-Penalty = 63361007770
-Penalty = 94598531035
-Penalty = 108493047495
-Penalty = 77953068840
-Penalty = 183561029090
+0015
+Penalty = 82675
+0016
+Penalty = 31366027235
+0017
+Penalty = 99100042090
+0018
+Penalty = 187673150110
+0019
+Penalty = 106125
+0020
+Penalty = 23355
+0021
+Penalty = 128305001810
+0022
+Penalty = 90185538055
+0023
+Penalty = 6565
+0024
+Penalty = 8070
+0025
+Penalty = 30320
+0026
+Penalty = 30709089255
+0027
+Penalty = 145117013620
+0028
+Penalty = 30740
+0029
+Penalty = 29866646293
+0030
+Penalty = 134258015025
+0031
+Penalty = 272606414060
+0032
+Penalty = 115467062545
+0033
+Penalty = 45761190650
+0034
+Penalty = 10590
+0035
+Penalty = 34728880805
+0036
+Penalty = 21485
+0037
+Penalty = 7600
+0038
+Penalty = 26599020640
+0039
+Penalty = 11960
+0040
+Penalty = 117721056535
+0041
+Penalty = 30685265755
+0042
+Penalty = 45930
+0043
+Penalty = 27915
+0044
+Penalty = 4560
+0045
+Penalty = 24501008740
+0046
+Penalty = 101721029770
+0047
+Penalty = 74215071285
+0048
+Penalty = 7756152615
+0049
+Penalty = 104026015000
+0050
+Penalty = 14520
+0051
+Penalty = 39510
+0052
+Penalty = 142371647800
+0053
+Penalty = 98779771945
+0054
+Penalty = 66575
+0055
+Penalty = 46311159345
+0056
+Penalty = 39965
+0057
+Penalty = 71002017225
+0058
+Penalty = 315033299392
+0059
+Penalty = 3500
+0060
+Penalty = 50563012360
+0061
+Penalty = 40510
+0062
+Penalty = 162069751640
+0063
+Penalty = 50950
+0064
+Penalty = 31860
+0065
 Penalty = 0
 荷物の総数が足りません (p = 0)
-Penalty = 77953058705
-Penalty = 94891036005
-Penalty = 148444038950
-Penalty = 291560645755
-Penalty = 223973627515
-Penalty = 4115139670
-Penalty = 128305004810
-Penalty = 226169546925
-Penalty = 80657006795
-Penalty = 162466010590
-Penalty = 67321042850
-Penalty = 251102117260
-Penalty = 224736037740
-Penalty = 37005042360
-Penalty = 111927412635
-Penalty = 224330015515
-Penalty = 181479033455
-Penalty = 138075551585
-Penalty = 159777279650
-Penalty = 69565012680
-Penalty = 74452008080
-Penalty = 28475
-Penalty = 89896013645
-Penalty = 164136296055
-Penalty = 67271014730
-Penalty = 170374039475
-Penalty = 170806513130
-Penalty = 43332039295
-Penalty = 136620045090
-Penalty = 73018003760
-Penalty = 166188013030
-Penalty = 242305043385
-Penalty = 175627089015
-Penalty = 122061235105
-Penalty = 129970009000
-Penalty = 76858014685
-Penalty = 71022041970
-Penalty = 197178503410
-Penalty = 98779757795
-Penalty = 95238081455
-Penalty = 225168630045
-Penalty = 22065
-Penalty = 71002014720
-Penalty = 354285701830
-Penalty = 61051004750
-Penalty = 13980
-Penalty = 29377035960
+0066
+Penalty = 42611578410
+0067
+Penalty = 75045
+0068
+Penalty = 130631034220
+0069
+Penalty = 33749759665
+0070
+Penalty = 9090
+0071
+Penalty = 309773563555
+0072
+Penalty = 96516631645
+0073
+Penalty = 213368025925
+0074
+Penalty = 49720530715
+0075
+Penalty = 55405082550
+0076
+Penalty = 15185
+0077
+Penalty = 8500
+0078
+Penalty = 57095
+0079
+Penalty = 45748649785
+0080
+Penalty = 35180
+0081
 Penalty = 0
 荷物の総数が足りません (p = 0)
-Penalty = 39313053705
-Penalty = 37060
-Penalty = 9075
-Penalty = 29866579430
+0082
+Penalty = 64734101345
+0083
+Penalty = 4935
+0084
 Penalty = 0
 荷物の総数が足りません (p = 0)
-Penalty = 67751531295
-Penalty = 82337257840
-Penalty = 167460898985
-Penalty = 283785808855
-Penalty = 103357012235
+0085
+Penalty = 75038510630
+0086
+Penalty = 4400
+0087
+Penalty = 4460
+0088
 Penalty = 0
 荷物の総数が足りません (p = 0)
-Penalty = 154646035445
-Penalty = 185821079980
-Penalty = 173049010045
-Penalty = 26776006850
-Penalty = 40665060485
-Penalty = 116932028335
-Penalty = 55351022550
-Penalty = 0
-荷物の総数が足りません (p = 4)
-Penalty = 97894092570
-Penalty = 7090
-Penalty = 0
-荷物の総数が足りません (p = 0)
-Penalty = 142358510090
-Penalty = 94557005660
-Penalty = 159322007820
-Penalty = 0
-荷物の総数が足りません (p = 1)
-Penalty = 65423530305
-Penalty = 212746144265
-Penalty = 168049027140
-Penalty = 106386098220
-Penalty = 2530
-Penalty = 211633178280
-Penalty = 2360
-Penalty = 131911021760
-Penalty = 87451079425
-Penalty = 228739033990
-Penalty = 85432578420
+0089
+Penalty = 31825
+0090
+Penalty = 17109093235
+0091
+Penalty = 91585015140
+0092
+Penalty = 115597126010
+0093
+Penalty = 4530
+0094
+Penalty = 181763700605
+0095
+Penalty = 71281001615
+0096
+Penalty = 70351022000
+0097
+Penalty = 100539048940
+0098
+Penalty = 63361068540
+0099
+Penalty = 90110
