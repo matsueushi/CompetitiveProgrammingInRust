@@ -424,32 +424,6 @@ impl Packer {
         }
     }
 
-    fn penalty(&self) -> usize {
-        let mut score = 1000;
-        // max height
-        let mut max_h = 0;
-        let mut overflow_vol = 0;
-        for p in &self.packed {
-            let h = p.z_upper();
-            max_h = max_h.max(h);
-            if h > self.d {
-                overflow_vol += p.item.volume();
-            }
-        }
-        score += max_h;
-        for i in 0..self.packed.len() {
-            for j in i + 1..self.packed.len() {
-                if self.packed[i].item.id > self.packed[j].item.id {
-                    score += 1000;
-                }
-            }
-        }
-        if max_h > self.d {
-            score += 1_000_000 + 1000 * overflow_vol;
-        }
-        score
-    }
-
     fn pack_item(&mut self, vertex: &Position, item: &Item) -> Option<Placement> {
         let mut item = Some(*item);
         loop {
@@ -540,7 +514,8 @@ impl Packer {
             }
 
             if success {
-                let penalty = self.penalty();
+                self.packed = Self::order_items(&self.packed);
+                let penalty = evaluate_penalty(&self.packed, self.d);
                 if penalty < best_penalty {
                     best_penalty = penalty;
                     std::mem::swap(&mut best_packed, &mut self.packed);
@@ -551,11 +526,36 @@ impl Packer {
             items.shuffle(&mut rng);
         }
 
-        eprintln!("success. score = {}", best_penalty);
-        Self::order_items(&best_packed)
+        // eprintln!("success. score = {}", best_penalty);
+        best_packed
     }
 }
 
+fn evaluate_penalty(placements: &Vec<Placement>, d: usize) -> usize {
+    let mut score = 1000;
+    // max height
+    let mut max_h = 0;
+    let mut overflow_vol = 0;
+    for p in placements {
+        let h = p.z_upper();
+        max_h = max_h.max(h);
+        if h > d {
+            overflow_vol += p.item.volume();
+        }
+    }
+    score += max_h;
+    for i in 0..placements.len() {
+        for j in i + 1..placements.len() {
+            if placements[i].item.id > placements[j].item.id {
+                score += 1000;
+            }
+        }
+    }
+    if max_h > d {
+        score += 1_000_000 + 1000 * overflow_vol;
+    }
+    score
+}
 fn main() {
     input! {
         m: usize,
