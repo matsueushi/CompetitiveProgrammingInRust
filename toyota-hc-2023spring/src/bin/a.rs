@@ -494,6 +494,7 @@ impl Packer {
     }
 
     fn pack(&mut self, items: Vec<Item>) -> Vec<Placement> {
+        let since = std::time::Instant::now();
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
 
         let mut items = items;
@@ -502,7 +503,7 @@ impl Packer {
         let mut best_penalty = std::usize::MAX;
         let mut best_packed = Vec::new();
 
-        for _ in 0..1 {
+        while since.elapsed().as_secs_f32() < 1.9 {
             let mut success = true;
             for item in &items {
                 let vs = self.vertices.clone();
