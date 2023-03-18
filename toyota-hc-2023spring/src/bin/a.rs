@@ -201,7 +201,7 @@ impl PartialOrd for Item {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Placement {
     pos: Position,
     item: Item,
@@ -414,12 +414,6 @@ impl Packer {
         }
     }
 
-    fn print(&self) {
-        for p in &self.packed {
-            p.print();
-        }
-    }
-
     fn penalty(&self) -> usize {
         let mut score = 1000;
         // max height
@@ -467,11 +461,12 @@ impl Packer {
         None
     }
 
-    fn pack(&mut self, items: Vec<Item>) {
+    fn pack(&mut self, items: Vec<Item>) -> Vec<Placement> {
         let mut items = items;
         items.sort();
+
         let mut success = true;
-        for item in items {
+        for item in &items {
             let vs = self.vertices.clone();
             // もっとも低くなるように積む
             let mut h = std::usize::MAX;
@@ -496,6 +491,8 @@ impl Packer {
         if success {
             eprintln!("success. score = {}", self.penalty());
         }
+
+        self.packed.clone()
     }
 }
 
@@ -525,8 +522,10 @@ fn main() {
     }
 
     let mut packer = Packer::new(w, h, d, b);
-    packer.pack(items);
-    packer.print();
+    let packed = packer.pack(items);
+    for p in packed {
+        p.print();
+    }
 }
 
 ///
