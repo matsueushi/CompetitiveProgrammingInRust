@@ -311,6 +311,7 @@ struct Packer {
     w: usize,
     h: usize,
     d: usize,
+    blocks: Vec<Placement>,
     packed: Vec<Placement>,
     vertices: Vec<Position>,
 }
@@ -318,8 +319,8 @@ struct Packer {
 impl Packer {
     fn new(w: usize, h: usize, d: usize, b: usize) -> Self {
         // 地面を配置する
-        let mut packed = Vec::new();
-        packed.push(Placement {
+        let mut blocks = Vec::new();
+        blocks.push(Placement {
             pos: Position { x: 0, y: 0, z: 0 },
             item: Item {
                 id: BLOCK,
@@ -336,41 +337,52 @@ impl Packer {
             w,
             h,
             d,
-            packed,
+            blocks,
+            packed: Vec::new(),
             vertices: Vec::new(),
         };
-        packer.put_item(packer.block(0, 0, b));
-        packer.put_item(packer.block(w - b, 0, b));
-        packer.put_item(packer.block(0, h - b, b));
-        packer.put_item(packer.block(w - b, h - b, b));
+        packer.add_block(0, 0, b);
+        packer.add_block(w - b, 0, b);
+        packer.add_block(0, h - b, b);
+        packer.add_block(w - b, h - b, b);
         packer
     }
 
-    fn block(&self, x: usize, y: usize, b: usize) -> Placement {
-        Placement {
+    fn add_block(&mut self, x: usize, y: usize, b: usize) {
+        let placement = Placement {
             pos: Position { x, y, z: 0 },
             item: Item::new_block(b, b, self.d),
-        }
+        };
+        self.add_vertices(placement.vertices());
+        self.blocks.push(placement);
     }
 
-    fn put_item(&mut self, placement: Placement) {
-        let mut vs = placement.vertices();
-        // 場所を確認する
-        let mut i = self.packed.len();
-        for j in (0..self.packed.len()).rev() {
-            if placement.z_upper() < self.packed[j].z_lower()
-                && placement.project_z().intersect(&self.packed[j].project_z())
-            {
-                i = j;
-            }
-        }
-        self.packed.insert(i, placement);
+    fn add_vertices(&mut self, vs: Vec<Position>) {
         for v in vs {
             if v.x == self.w || v.y == self.h {
                 continue;
             }
             self.vertices.push(v);
         }
+    }
+
+    fn put_item(&mut self, placement: Placement) {
+        eprintln!("put_item {:?}", placement);
+        let mut vs = placement.vertices();
+        // 場所を確認する
+        let mut i = self.packed.len();
+        for j in (0..self.packed.len()).rev() {
+            eprintln!("check {:?}", self.packed[j]);
+            if placement.z_upper() <= self.packed[j].z_lower()
+                && placement.project_z().intersect(&self.packed[j].project_z())
+            {
+                eprintln!("intersect");
+                i = j;
+            }
+        }
+        eprintln!("{} {:?}", i, &placement);
+        self.packed.insert(i, placement);
+        self.add_vertices(vs);
     }
 
     fn check_allocation(&self, pos: &Position, item: &Item) -> Option<Placement> {
@@ -385,7 +397,7 @@ impl Packer {
 
         // 交差するかどうかを調べる
         let mut contact_area = 0; // 接触面積
-        for p in &self.packed {
+        for p in self.blocks.iter().chain(self.packed.iter()) {
             if placement.intersect(&p) {
                 // eprintln!("intersected {:?}, {:?}", p, placement);
                 return None;
@@ -444,7 +456,6 @@ impl Packer {
     }
 
     fn pack_item(&mut self, vertex: &Position, item: &Item) -> Option<Placement> {
-        // eprintln!("pack item {:?}", v);
         let mut item = Some(*item);
         loop {
             match item {
