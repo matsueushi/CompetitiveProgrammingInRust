@@ -1,201 +1,201 @@
 0000
-Penalty = 8105
+Penalty = 2995
 0001
-Penalty = 15970
+Penalty = 8150
 0002
-Penalty = 37510
+Penalty = 9510
 0003
-Penalty = 104987243450
+Penalty = 99401138930
 0004
-Penalty = 76506706425
+Penalty = 19495084365
 0005
-Penalty = 24105
+Penalty = 8160
 0006
-Penalty = 27590
+Penalty = 19580
 0007
-Penalty = 56481557930
+Penalty = 40059588775
 0008
-Penalty = 4365
+Penalty = 1510
 0009
-Penalty = 9530
+Penalty = 1390
 0010
-Penalty = 53197017805
+Penalty = 22010116726
 0011
-Penalty = 28170
+Penalty = 11190
 0012
-Penalty = 88440
+Penalty = 23560
 0013
-Penalty = 16140
+Penalty = 18180
 0014
-Penalty = 197794167810
+Penalty = 146812131740
 0015
-Penalty = 75155
+Penalty = 27120
 0016
-Penalty = 20030
+Penalty = 9030
 0017
-Penalty = 74746030810
+Penalty = 53818548785
 0018
-Penalty = 93012644890
+Penalty = 93012635890
 0019
-Penalty = 115145
+Penalty = 55190
 0020
-Penalty = 17555
+Penalty = 4555
 0021
-Penalty = 6365
+Penalty = 4365
 0022
-Penalty = 56081527845
+Penalty = 56081519845
 0023
-Penalty = 9565
+Penalty = 4380
 0024
-Penalty = 5070
+Penalty = 3070
 0025
-Penalty = 49470
+Penalty = 5330
 0026
-Penalty = 30709089255
+Penalty = 107200
 0027
-Penalty = 145117021300
+Penalty = 145117013620
 0028
-Penalty = 20135
+Penalty = 6025
 0029
-Penalty = 176200
+Penalty = 157185
 0030
-Penalty = 59631012785
+Penalty = 56081515955
 0031
-Penalty = 55182
+Penalty = 34155
 0032
-Penalty = 37190
+Penalty = 25175
 0033
 Penalty = 45761190650
 0034
-Penalty = 10590
+Penalty = 3600
 0035
-Penalty = 34728880755
+Penalty = 34728880805
 0036
-Penalty = 32475
+Penalty = 6475
 0037
-Penalty = 6505
+Penalty = 2480
 0038
-Penalty = 26600
+Penalty = 24580
 0039
-Penalty = 10810
+Penalty = 4130
 0040
-Penalty = 27180
+Penalty = 16165
 0041
-Penalty = 14570
+Penalty = 8545
 0042
-Penalty = 43045
+Penalty = 11125
 0043
-Penalty = 45090
+Penalty = 15010
 0044
-Penalty = 2560
+Penalty = 1560
 0045
-Penalty = 24501008740
+Penalty = 24501007720
 0046
-Penalty = 97093023200
+Penalty = 76858022225
 0047
-Penalty = 71120
+Penalty = 46055
 0048
 Penalty = 7756152615
 0049
-Penalty = 20596142645
+Penalty = 20596136730
 0050
-Penalty = 10520
+Penalty = 2465
 0051
-Penalty = 48580
+Penalty = 3540
 0052
-Penalty = 61916128485
+Penalty = 77185
 0053
-Penalty = 28460
+Penalty = 16500
 0054
-Penalty = 59860
+Penalty = 25980
 0055
-Penalty = 46311159345
+Penalty = 27745139430
 0056
-Penalty = 26065
+Penalty = 10170
 0057
-Penalty = 14945
+Penalty = 2945
 0058
-Penalty = 177276775300
+Penalty = 119786685540
 0059
-Penalty = 6500
+Penalty = 1500
 0060
-Penalty = 12815
+Penalty = 5965
 0061
-Penalty = 22595
+Penalty = 17570
 0062
-Penalty = 162069751640
+Penalty = 130223427585
 0063
-Penalty = 35170
+Penalty = 15160
 0064
-Penalty = 51995
+Penalty = 23170
 0065
-Penalty = 11075
+Penalty = 7075
 0066
-Penalty = 66100
+Penalty = 35060
 0067
-Penalty = 81145
+Penalty = 62145
 0068
-Penalty = 63361014910
+Penalty = 63361013910
 0069
-Penalty = 9545
+Penalty = 3450
 0070
-Penalty = 24150
+Penalty = 8090
 0071
-Penalty = 67321077430
+Penalty = 67321061465
 0072
-Penalty = 96516632905
+Penalty = 96516629905
 0073
-Penalty = 78409029500
+Penalty = 74096017310
 0074
-Penalty = 15400029660
+Penalty = 37580
 0075
-Penalty = 55405082550
+Penalty = 18469103310
 0076
-Penalty = 11195
+Penalty = 2895
 0077
-Penalty = 5585
+Penalty = 4585
 0078
-Penalty = 36005
+Penalty = 20015
 0079
-Penalty = 45748645785
+Penalty = 45748630785
 0080
-Penalty = 25180
+Penalty = 10180
 0081
-Penalty = 156492177045
+Penalty = 45322039390
 0082
-Penalty = 39354101365
+Penalty = 70135
 0083
-Penalty = 4935
+Penalty = 1890
 0084
-Penalty = 130321143475
+Penalty = 95311149530
 0085
-Penalty = 75038505750
+Penalty = 75038503750
 0086
-Penalty = 5400
+Penalty = 2420
 0087
-Penalty = 8540
+Penalty = 3460
 0088
 Penalty = 0
 荷物の総数が足りません (p = 0)
 0089
-Penalty = 35985
+Penalty = 10825
 0090
 Penalty = 17109093235
 0091
-Penalty = 45793024810
+Penalty = 63001010975
 0092
-Penalty = 114862161910
+Penalty = 70633124055
 0093
-Penalty = 2530
+Penalty = 2535
 0094
-Penalty = 112964207510
+Penalty = 83836741460
 0095
 Penalty = 71281001615
 0096
-Penalty = 10600
+Penalty = 12600
 0097
-Penalty = 57190
+Penalty = 48125
 0098
-Penalty = 63361080435
+Penalty = 78200
 0099
-Penalty = 58165
+Penalty = 38170
