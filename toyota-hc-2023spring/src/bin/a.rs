@@ -43,6 +43,18 @@ impl Rect {
         x0_max < x1_min && y0_max < y1_min
     }
 
+    fn intersect_area(&self, other: &Self) -> usize {
+        let x0_max = self.x0.max(other.x0);
+        let x1_min = self.x1.min(other.x1);
+        let y0_max = self.y0.max(other.y0);
+        let y1_min = self.y1.min(other.y1);
+        if x0_max < x1_min && y0_max < y1_min {
+            (x1_min - x0_max) * (y1_min - y0_max)
+        } else {
+            0
+        }
+    }
+
     fn slide(&self, x: usize, y: usize) -> Self {
         Self {
             x0: self.x0 + x,
@@ -191,6 +203,34 @@ struct Placement {
 }
 
 impl Placement {
+    fn is_block(&self) -> bool {
+        self.item.id == BLOCK
+    }
+
+    fn x_lower(&self) -> usize {
+        self.pos.x
+    }
+
+    fn x_upper(&self) -> usize {
+        self.pos.x + self.item.dim_x()
+    }
+
+    fn y_lower(&self) -> usize {
+        self.pos.y
+    }
+
+    fn y_upper(&self) -> usize {
+        self.pos.y + self.item.dim_y()
+    }
+
+    fn z_lower(&self) -> usize {
+        self.pos.z
+    }
+
+    fn z_upper(&self) -> usize {
+        self.pos.z + self.item.dim_z()
+    }
+
     fn project_x(&self) -> Rect {
         self.item.project_x(&self.pos)
     }
@@ -210,16 +250,37 @@ impl Placement {
             || self.project_z().intersect(&other.project_z())
     }
 
+    /// 上に乗っているか、載せられるか
+    fn ground_contact_area(&self, under: &Self) -> Result<usize, ()> {
+        if self.z_lower() != under.z_upper() {
+            return Ok(0);
+        }
+        let ground = self.project_z();
+        let top = under.project_z();
+        if ground.intersect(&top) {
+            if under.item.fragile {
+                Err(())
+            } else {
+                Ok(ground.intersect_area(&top))
+            }
+        } else {
+            Ok(0)
+        }
+    }
+
     fn vertices(&self) -> Vec<Position> {
         let proj_z = self.project_z();
         let mut vs = Vec::new();
         vs.push(self.pos.slide(self.item.dim_x(), 0, 0));
         vs.push(self.pos.slide(0, self.item.dim_y(), 0));
+        if !self.is_block() {
+            vs.push(self.pos.slide(0, 0, self.item.dim_z()));
+        }
         vs
     }
 
     fn print(&self) {
-        if self.item.id == BLOCK {
+        if self.is_block() {
             return;
         }
         println!(
@@ -274,10 +335,27 @@ impl Packer {
         }
     }
 
+    fn check_allocation(&self, pos: &Position, item: &Item) -> bool {
+        let placement = Placement {
+            pos: *pos,
+            item: *item,
+        };
+        // 交差するかどうかを調べる
+        let mut contact_area = 0; // 接触面積
+        for p in &self.packed {
+            if p.intersect(&placement) {
+                return false;
+            }
+        }
+        true
+    }
+
     fn pack(&self, items: Vec<Item>) {
         let mut items = items;
         items.sort();
-        eprintln!("{:?}", items);
+        for item in items {
+            eprintln!("{:?}", item);
+        }
     }
 }
 
@@ -418,5 +496,49 @@ mod tests {
             },
         };
         assert!(p1.intersect(&p2));
+    }
+
+    #[test]
+    fn test_ground_contact_area() {
+        let p1 = Placement {
+            pos: Position { x: 0, y: 0, z: 0 },
+            item: Item {
+                id: 0,
+                w: 2,
+                h: 2,
+                d: 2,
+                orientation: 0,
+                fragile: false,
+                flippable: true,
+            },
+        };
+        let p2 = Placement {
+            pos: Position { x: 1, y: 1, z: 2 },
+            item: Item {
+                id: 0,
+                w: 2,
+                h: 2,
+                d: 2,
+                orientation: 0,
+                fragile: false,
+                flippable: true,
+            },
+        };
+        assert_eq!(p2.ground_contact_area(&p1), Ok(1));
+
+        let p3 = Placement {
+            pos: Position { x: 0, y: 0, z: 0 },
+            item: Item {
+                id: 0,
+                w: 2,
+                h: 2,
+                d: 2,
+                orientation: 0,
+                fragile: true,
+                flippable: true,
+            },
+        };
+
+        assert_eq!(p2.ground_contact_area(&p3), Err(()));
     }
 }
