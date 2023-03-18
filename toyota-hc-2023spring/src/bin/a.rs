@@ -312,6 +312,7 @@ struct Packer {
     d: usize,
     blocks: Vec<Placement>,
     packed: Vec<Placement>,
+    block_vertices: Vec<Position>,
     vertices: Vec<Position>,
 }
 
@@ -338,6 +339,7 @@ impl Packer {
             d,
             blocks,
             packed: Vec::new(),
+            block_vertices: Vec::new(),
             vertices: Vec::new(),
         };
         packer.add_block(0, 0, b);
@@ -352,24 +354,33 @@ impl Packer {
             pos: Position { x, y, z: 0 },
             item: Item::new_block(b, b, self.d),
         };
-        self.add_vertices(placement.vertices());
+        self.add_vertices(placement.vertices(), true);
         self.blocks.push(placement);
     }
 
-    fn add_vertices(&mut self, vs: Vec<Position>) {
+    fn add_vertices(&mut self, vs: Vec<Position>, is_block: bool) {
         for v in vs {
             if v.x == self.w || v.y == self.h {
                 continue;
             }
-            self.vertices.push(v);
+            if is_block {
+                self.block_vertices.push(v);
+            } else {
+                self.vertices.push(v);
+            }
         }
+    }
+
+    fn clear(&mut self) {
+        self.packed.clear();
+        self.vertices.clear();
     }
 
     fn put_item(&mut self, placement: Placement) {
         // eprintln!("put_item {:?}", placement);
         let mut vs = placement.vertices();
         self.packed.push(placement);
-        self.add_vertices(vs);
+        self.add_vertices(vs, false);
     }
 
     fn check_allocation(&self, pos: &Position, item: &Item) -> Option<Placement> {
@@ -506,7 +517,8 @@ impl Packer {
         while since.elapsed().as_secs_f32() < 1.9 {
             let mut success = true;
             for item in &items {
-                let vs = self.vertices.clone();
+                let mut vs = self.vertices.clone();
+                vs.append(&mut self.block_vertices.clone());
                 // もっとも低くなるように積む
                 let mut h = std::usize::MAX;
                 let mut p = None;
@@ -535,7 +547,7 @@ impl Packer {
                 }
             }
 
-            self.packed.clear();
+            self.clear();
             items.shuffle(&mut rng);
         }
 
