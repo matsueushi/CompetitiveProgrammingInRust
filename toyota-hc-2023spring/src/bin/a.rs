@@ -296,9 +296,6 @@ impl Placement {
     }
 
     fn print(&self) {
-        if self.is_block() {
-            return;
-        }
         println!(
             "{} {} {} {} {}",
             self.item.id, self.item.orientation, self.pos.x, self.pos.y, self.pos.z
@@ -367,21 +364,9 @@ impl Packer {
     }
 
     fn put_item(&mut self, placement: Placement) {
-        eprintln!("put_item {:?}", placement);
+        // eprintln!("put_item {:?}", placement);
         let mut vs = placement.vertices();
-        // 場所を確認する
-        let mut i = self.packed.len();
-        for j in (0..self.packed.len()).rev() {
-            eprintln!("check {:?}", self.packed[j]);
-            if placement.z_upper() <= self.packed[j].z_lower()
-                && placement.project_z().intersect(&self.packed[j].project_z())
-            {
-                eprintln!("intersect");
-                i = j;
-            }
-        }
-        eprintln!("{} {:?}", i, &placement);
-        self.packed.insert(i, placement);
+        self.packed.push(placement);
         self.add_vertices(vs);
     }
 
@@ -432,9 +417,6 @@ impl Packer {
         let mut max_h = 0;
         let mut overflow_vol = 0;
         for p in &self.packed {
-            if p.is_block() {
-                continue;
-            }
             let h = p.z_upper();
             max_h = max_h.max(h);
             if h > self.d {
@@ -472,6 +454,43 @@ impl Packer {
         None
     }
 
+    /// 順番通りに並べる
+    fn order_items(packed: &Vec<Placement>) -> Vec<Placement> {
+        let mut n_items = packed.len();
+        let mut items = Vec::new();
+        let mut used = vec![false; n_items];
+        while n_items > 0 {
+            for i in 0..packed.len() {
+                let mut top = true;
+                if used[i] {
+                    continue;
+                }
+                for j in 0..packed.len() {
+                    if i == j || used[j] {
+                        continue;
+                    }
+                    if packed[j].z_lower() >= packed[i].z_upper()
+                        && packed[i].project_z().intersect(&packed[j].project_z())
+                    {
+                        top = false;
+                    }
+                }
+
+                if top {
+                    used[i] = true;
+                    items.push(i);
+                    n_items -= 1;
+                }
+            }
+        }
+
+        let mut ordered_items = Vec::new();
+        for i in items.iter().rev() {
+            ordered_items.push(packed[*i]);
+        }
+        ordered_items
+    }
+
     fn pack(&mut self, items: Vec<Item>) -> Vec<Placement> {
         let mut items = items;
         items.sort();
@@ -503,7 +522,7 @@ impl Packer {
             eprintln!("success. score = {}", self.penalty());
         }
 
-        self.packed.clone()
+        Self::order_items(&self.packed)
     }
 }
 
