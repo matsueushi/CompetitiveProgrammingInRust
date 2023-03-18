@@ -40,6 +40,7 @@ impl Rect {
         let x1_min = self.x1.min(other.x1);
         let y0_max = self.y0.max(other.y0);
         let y1_min = self.y1.min(other.y1);
+        // eprintln!("{} {} {} {}", x0_max, x1_min, y0_max, y1_min);
         x0_max < x1_min && y0_max < y1_min
     }
 
@@ -57,10 +58,10 @@ impl Rect {
 
     fn slide(&self, x: usize, y: usize) -> Self {
         Self {
-            x0: self.x0 + x,
-            y0: self.y0 + y,
-            x1: self.y1 + x,
-            y1: self.y1 + y,
+            x0: x + self.x0,
+            y0: y + self.y0,
+            x1: x + self.x1,
+            y1: y + self.y1,
         }
     }
 }
@@ -85,8 +86,8 @@ impl Item {
             h,
             d,
             orientation: 0,
-            flippable: true,
-            fragile: false,
+            flippable: false,
+            fragile: true,
         }
     }
 
@@ -180,6 +181,10 @@ impl Item {
             z: self.dim_z(),
         }
     }
+
+    fn ground_area(&self) -> usize {
+        self.dim_x() * self.dim_y()
+    }
 }
 
 impl Ord for Item {
@@ -245,13 +250,24 @@ impl Placement {
 
     /// 長方形の交差判定をする
     fn intersect(&self, other: &Self) -> bool {
+        // eprintln!(
+        //     "{:?} {:?} {:?} {:?} {:?} {:?}",
+        //     self.project_x(),
+        //     other.project_x(),
+        //     self.project_y(),
+        //     other.project_y(),
+        //     self.project_z(),
+        //     other.project_z()
+        // );
         self.project_x().intersect(&other.project_x())
-            || self.project_y().intersect(&other.project_y())
-            || self.project_z().intersect(&other.project_z())
+            && self.project_y().intersect(&other.project_y())
+            && self.project_z().intersect(&other.project_z())
     }
 
     /// 上に乗っているか、載せられるか
+    /// 地面に接しているときは地面の面積
     fn ground_contact_area(&self, under: &Self) -> Result<usize, ()> {
+        // underと接しているか
         if self.z_lower() != under.z_upper() {
             return Ok(0);
         }
@@ -301,11 +317,26 @@ struct Packer {
 
 impl Packer {
     fn new(w: usize, h: usize, d: usize, b: usize) -> Self {
+        // 地面を配置する
+        let mut packed = Vec::new();
+        packed.push(Placement {
+            pos: Position { x: 0, y: 0, z: 0 },
+            item: Item {
+                id: BLOCK,
+                w,
+                h,
+                d: 0, // depth は 0
+                orientation: 0,
+                flippable: true,
+                fragile: false,
+            },
+        });
+
         let mut packer = Self {
             w,
             h,
             d,
-            packed: Vec::new(),
+            packed,
             vertices: Vec::new(),
         };
         packer.put_item(packer.block(0, 0, b));
@@ -323,10 +354,17 @@ impl Packer {
     }
 
     fn put_item(&mut self, placement: Placement) {
-        placement.print();
-
         let mut vs = placement.vertices();
-        self.packed.push(placement);
+        // 場所を確認する
+        let mut i = self.packed.len();
+        for j in (0..self.packed.len()).rev() {
+            if placement.z_upper() < self.packed[j].z_lower()
+                && placement.project_z().intersect(&self.packed[j].project_z())
+            {
+                i = j;
+            }
+        }
+        self.packed.insert(i, placement);
         for v in vs {
             if v.x == self.w || v.y == self.h {
                 continue;
@@ -335,26 +373,91 @@ impl Packer {
         }
     }
 
-    fn check_allocation(&self, pos: &Position, item: &Item) -> bool {
+    fn check_allocation(&self, pos: &Position, item: &Item) -> Option<Placement> {
         let placement = Placement {
             pos: *pos,
             item: *item,
         };
+        // 境界チェック
+        if placement.x_upper() > self.w || placement.y_upper() > self.h {
+            return None;
+        }
+
         // 交差するかどうかを調べる
         let mut contact_area = 0; // 接触面積
         for p in &self.packed {
-            if p.intersect(&placement) {
-                return false;
+            if placement.intersect(&p) {
+                // eprintln!("intersected {:?}, {:?}", p, placement);
+                return None;
+            }
+
+            match placement.ground_contact_area(&p) {
+                Ok(area) => {
+                    // eprintln!("{:?} {:?} {}", p, placement, area);
+                    contact_area += area;
+                }
+                Err(_) => {
+                    return None;
+                }
             }
         }
-        true
+        // 面積チェック
+        let required = (item.ground_area() as f64 * 0.6).round() as usize;
+        if contact_area < required {
+            // eprintln!(
+            //     "area limitation is not satisfied {} {}",
+            //     contact_area, required
+            // );
+            None
+        } else {
+            Some(placement)
+        }
     }
 
-    fn pack(&self, items: Vec<Item>) {
+    fn pack_item(&mut self, vertex: &Position, item: &Item) -> Option<Placement> {
+        // eprintln!("pack item {:?}", v);
+        let mut item = Some(*item);
+        loop {
+            match item {
+                Some(it) => {
+                    let ret = self.check_allocation(&vertex, &it);
+                    if ret.is_some() {
+                        return ret;
+                    }
+                    item = it.rotate();
+                }
+                None => return None,
+            }
+        }
+        None
+    }
+
+    fn pack(&mut self, items: Vec<Item>) {
         let mut items = items;
         items.sort();
         for item in items {
-            eprintln!("{:?}", item);
+            let vs = self.vertices.clone();
+            // もっとも低くなるように積む
+            let mut h = std::usize::MAX;
+            let mut p = None;
+            for v in vs {
+                if let Some(placement) = self.pack_item(&v, &item) {
+                    let nh = placement.z_upper();
+                    if nh < h {
+                        h = nh;
+                        p = Some(placement);
+                    }
+                }
+            }
+            if let Some(placement) = p {
+                self.put_item(placement);
+            }
+        }
+    }
+
+    fn print(&self) {
+        for p in &self.packed {
+            p.print();
         }
     }
 }
@@ -384,9 +487,9 @@ fn main() {
         }
     }
 
-    let packer = Packer::new(w, h, d, b);
+    let mut packer = Packer::new(w, h, d, b);
     packer.pack(items);
-    // eprintln!("{:?}", packer);
+    packer.print();
 }
 
 ///
@@ -434,7 +537,7 @@ mod tests {
             Rect {
                 x0: 6,
                 y0: 8,
-                x1: 9,
+                x1: 8,
                 y1: 10,
             }
         );
@@ -496,6 +599,29 @@ mod tests {
             },
         };
         assert!(p1.intersect(&p2));
+    }
+
+    #[test]
+    fn test_project() {
+        let item = Item {
+            id: 0,
+            w: 1,
+            h: 2,
+            d: 3,
+            orientation: 0,
+            fragile: false,
+            flippable: true,
+        };
+        let pos = Position { x: 1, y: 1, z: 1 };
+        assert_eq!(
+            item.project_x(&pos),
+            Rect {
+                x0: 1,
+                y0: 1,
+                x1: 3,
+                y1: 4,
+            }
+        );
     }
 
     #[test]
