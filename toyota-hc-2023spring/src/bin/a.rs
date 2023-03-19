@@ -66,6 +66,10 @@ impl Rect {
             y1: y + self.y1,
         }
     }
+
+    fn isin(&self, x: usize, y: usize) -> bool {
+        self.x0 <= x && x <= self.x1 && self.y0 <= y && y <= self.y1
+    }
 }
 
 /// 荷物
@@ -310,6 +314,7 @@ struct Packer {
     w: usize,
     h: usize,
     d: usize,
+    b: usize,
     blocks: Vec<Placement>,
     packed: Vec<Placement>,
     block_vertices: Vec<Position>,
@@ -337,6 +342,7 @@ impl Packer {
             w,
             h,
             d,
+            b,
             blocks,
             packed: Vec::new(),
             block_vertices: Vec::new(),
@@ -359,14 +365,26 @@ impl Packer {
     }
 
     fn add_vertices(&mut self, vs: Vec<Position>, is_block: bool) {
+        // 探索候補の点を加える。
         for v in vs {
             if v.x == self.w || v.y == self.h {
                 continue;
             }
+
+            // 他のPlacementへ垂線を下ろす
+            let mut z = 0;
+            for p in &self.packed {
+                if v.z >= p.z_upper() && p.project_z().isin(v.x, v.y) {
+                    z = z.max(p.z_upper());
+                }
+            }
+
+            let nv = Position { x: v.x, y: v.y, z };
+
             if is_block {
-                self.block_vertices.push(v);
+                self.block_vertices.push(nv);
             } else {
-                self.vertices.push(v);
+                self.vertices.push(nv);
             }
         }
     }
@@ -488,7 +506,8 @@ impl Packer {
         let mut best_penalty = std::usize::MAX;
         let mut best_packed = Vec::new();
 
-        while since.elapsed().as_secs_f32() < 1.9 {
+        let mut t = 0.0;
+        loop {
             let mut success = true;
             for item in &items {
                 let mut vs = self.vertices.clone();
@@ -520,6 +539,11 @@ impl Packer {
                     best_penalty = penalty;
                     std::mem::swap(&mut best_packed, &mut self.packed);
                 }
+            }
+
+            t = since.elapsed().as_secs_f32();
+            if t >= 1.9 {
+                break;
             }
 
             self.clear();
