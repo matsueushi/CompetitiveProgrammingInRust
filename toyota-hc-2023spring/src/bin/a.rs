@@ -101,20 +101,21 @@ impl Item {
         self.w * self.h * self.d
     }
 
-    fn rotate(&self) -> Option<Self> {
-        if (!self.flippable && self.orientation >= 1) || self.orientation == 5 {
-            None
-        } else {
-            Some(Self {
+    fn list_rotations(&self) -> Vec<Self> {
+        let iter = if self.flippable { 0..6 } else { 0..2 };
+        let mut rots = Vec::new();
+        for i in iter {
+            rots.push(Self {
                 id: self.id,
                 w: self.w,
                 h: self.h,
                 d: self.d,
-                orientation: self.orientation + 1,
+                orientation: i,
                 flippable: self.flippable,
                 fragile: self.fragile,
-            })
+            });
         }
+        rots
     }
 
     fn dim_x(&self) -> usize {
@@ -292,9 +293,10 @@ impl Placement {
 
     fn vertices(&self) -> Vec<Position> {
         let proj_z = self.project_z();
-        let mut vs = Vec::new();
-        vs.push(self.pos.slide(self.item.dim_x(), 0, 0));
-        vs.push(self.pos.slide(0, self.item.dim_y(), 0));
+        let mut vs = Vec::from([
+            self.pos.slide(self.item.dim_x(), 0, 0),
+            self.pos.slide(0, self.item.dim_y(), 0),
+        ]);
         if !self.is_block() {
             vs.push(self.pos.slide(0, 0, self.item.dim_z()));
         }
@@ -443,17 +445,10 @@ impl Packer {
     }
 
     fn pack_item(&mut self, vertex: &Position, item: &Item) -> Option<Placement> {
-        let mut item = Some(*item);
-        loop {
-            match item {
-                Some(it) => {
-                    let ret = self.check_allocation(&vertex, &it);
-                    if ret.is_some() {
-                        return ret;
-                    }
-                    item = it.rotate();
-                }
-                None => return None,
+        for it in item.list_rotations() {
+            let ret = self.check_allocation(&vertex, &it);
+            if ret.is_some() {
+                return ret;
             }
         }
         None
@@ -496,6 +491,24 @@ impl Packer {
         ordered_items
     }
 
+    fn find_placement(&mut self, item: &Item) -> Option<Placement> {
+        let mut vs = self.vertices.clone();
+        vs.append(&mut self.block_vertices.clone());
+        // もっとも低くなるように積む
+        let mut h = std::usize::MAX;
+        let mut p = None;
+        for v in vs {
+            if let Some(placement) = self.pack_item(&v, item) {
+                let nh = placement.z_upper();
+                if nh < h {
+                    h = nh;
+                    p = Some(placement);
+                }
+            }
+        }
+        p
+    }
+
     fn pack(&mut self, items: Vec<Item>) -> Vec<Placement> {
         let since = std::time::Instant::now();
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(42);
@@ -510,20 +523,7 @@ impl Packer {
         loop {
             let mut success = true;
             for item in &items {
-                let mut vs = self.vertices.clone();
-                vs.append(&mut self.block_vertices.clone());
-                // もっとも低くなるように積む
-                let mut h = std::usize::MAX;
-                let mut p = None;
-                for v in vs {
-                    if let Some(placement) = self.pack_item(&v, &item) {
-                        let nh = placement.z_upper();
-                        if nh < h {
-                            h = nh;
-                            p = Some(placement);
-                        }
-                    }
-                }
+                let p = self.find_placement(item);
                 if let Some(placement) = p {
                     self.put_item(placement);
                 } else {
