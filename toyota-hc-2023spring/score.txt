@@ -1,0 +1,201 @@
+0000
+Penalty = 2995
+0001
+Penalty = 9150
+0002
+Penalty = 9510
+0003
+Penalty = 80713152625
+0004
+Penalty = 19495084365
+0005
+Penalty = 8160
+0006
+Penalty = 19580
+0007
+Penalty = 40059587775
+0008
+Penalty = 1510
+0009
+Penalty = 1390
+0010
+Penalty = 24585
+0011
+Penalty = 10110
+0012
+Penalty = 23560
+0013
+Penalty = 17160
+0014
+Penalty = 115989186605
+0015
+Penalty = 27120
+0016
+Penalty = 7030
+0017
+Penalty = 50426038810
+0018
+Penalty = 93012635890
+0019
+Penalty = 51170
+0020
+Penalty = 4555
+0021
+Penalty = 4365
+0022
+Penalty = 56081514845
+0023
+Penalty = 4380
+0024
+Penalty = 3070
+0025
+Penalty = 5330
+0026
+Penalty = 107200
+0027
+Penalty = 145117012910
+0028
+Penalty = 6025
+0029
+Penalty = 147195
+0030
+Penalty = 39557015805
+0031
+Penalty = 34175
+0032
+Penalty = 24130
+0033
+Penalty = 45761190650
+0034
+Penalty = 3600
+0035
+Penalty = 34728880755
+0036
+Penalty = 3550
+0037
+Penalty = 2480
+0038
+Penalty = 12600
+0039
+Penalty = 4130
+0040
+Penalty = 14105
+0041
+Penalty = 8545
+0042
+Penalty = 11125
+0043
+Penalty = 15010
+0044
+Penalty = 1560
+0045
+Penalty = 24501007720
+0046
+Penalty = 76858022225
+0047
+Penalty = 46055
+0048
+Penalty = 7756152615
+0049
+Penalty = 20596136730
+0050
+Penalty = 2465
+0051
+Penalty = 3540
+0052
+Penalty = 77185
+0053
+Penalty = 16500
+0054
+Penalty = 25980
+0055
+Penalty = 32896177375
+0056
+Penalty = 10170
+0057
+Penalty = 2945
+0058
+Penalty = 118992509425
+0059
+Penalty = 1500
+0060
+Penalty = 4790
+0061
+Penalty = 17570
+0062
+Penalty = 124342773715
+0063
+Penalty = 15160
+0064
+Penalty = 15950
+0065
+Penalty = 7075
+0066
+Penalty = 35060
+0067
+Penalty = 62145
+0068
+Penalty = 63361013910
+0069
+Penalty = 3450
+0070
+Penalty = 8145
+0071
+Penalty = 37519791405
+0072
+Penalty = 96516629905
+0073
+Penalty = 62416032410
+0074
+Penalty = 34600
+0075
+Penalty = 18469103310
+0076
+Penalty = 2895
+0077
+Penalty = 4585
+0078
+Penalty = 20015
+0079
+Penalty = 45748630785
+0080
+Penalty = 10180
+0081
+Penalty = 45322039390
+0082
+Penalty = 70135
+0083
+Penalty = 1780
+0084
+Penalty = 67321159530
+0085
+Penalty = 75038503750
+0086
+Penalty = 2420
+0087
+Penalty = 3460
+0088
+Penalty = 0
+荷物の総数が足りません (p = 0)
+0089
+Penalty = 12100
+0090
+Penalty = 17109093235
+0091
+Penalty = 63001010975
+0092
+Penalty = 67033122960
+0093
+Penalty = 2535
+0094
+Penalty = 39436228460
+0095
+Penalty = 71281001615
+0096
+Penalty = 12600
+0097
+Penalty = 43135
+0098
+Penalty = 80180
+0099
+Penalty = 38170

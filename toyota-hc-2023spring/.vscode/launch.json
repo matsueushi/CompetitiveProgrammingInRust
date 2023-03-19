@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'toyota-hc-2023spring-a'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=toyota-hc-2023spring-a",
+                    "--package=toyota-hc-2023spring"
+                ],
+                "filter": {
+                    "name": "toyota-hc-2023spring-a",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'toyota-hc-2023spring-a'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=toyota-hc-2023spring-a",
+                    "--package=toyota-hc-2023spring"
+                ],
+                "filter": {
+                    "name": "toyota-hc-2023spring-a",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
